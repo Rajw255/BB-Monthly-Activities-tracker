@@ -6,7 +6,6 @@
 <title>Monthly activities</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
-<script src="https://accounts.google.com/gsi/client" async defer></script>
 <style>
   :root {
     --bg:#f2f5f4; --panel:#ffffff; --ink:#14262b; --muted:#5d6e72; --line:#dbe3e1; --line2:#e8eeec;
@@ -292,6 +291,7 @@
           <button type="button" data-k="sched" aria-pressed="false">Scheduled</button>
         </div>
       </div>
+      <div class="fld full" id="whoFld" hidden><label for="fWho">Your work email</label><input type="email" id="fWho" autocomplete="email" placeholder="name@company.com"></div>
       <div class="fld"><label for="fDate">Date</label><input type="date" id="fDate"></div>
       <div class="fld"><label for="fBr">Branch</label><select id="fBr"></select></div>
       <div class="fld full">
@@ -335,7 +335,8 @@ const CONFIG = {
   DOMAIN: 'yourcompany.com',                                                // work email domain (sign-in hint)
   PIC_MAX_PX: 1600, PIC_QUALITY: 0.72,     // session photos → ~200–400 KB
   ATT_MAX_PX: 2200, ATT_QUALITY: 0.82,     // attendance sheet photos stay readable
-  AUTO_REFRESH_MIN: 5
+  AUTO_REFRESH_MIN: 5,
+  AUTH_ENABLED: false   // false = no Google sign-in yet (set the same in Code.gs). Turn on later with CLIENT_ID filled in.
 };
 
 const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -463,6 +464,18 @@ function onCredential(resp) {
   loadAll();
 }
 function initAuth() {
+  if (!CONFIG.AUTH_ENABLED) {
+    AUTH.token = 'none'; AUTH.exp = Date.now() + 3650 * 864e5;
+    document.querySelector('.me').hidden = true;
+    $('whoFld').hidden = false;
+    try { $('fWho').value = localStorage.getItem('ma_who') || ''; } catch (e) {}
+    document.getElementById('main').hidden = false;
+    loadAll();
+    return;
+  }
+  const gis = document.createElement('script');
+  gis.src = 'https://accounts.google.com/gsi/client'; gis.async = true;
+  document.head.appendChild(gis);
   let saved = '';
   try { saved = sessionStorage.getItem('ma_tok') || ''; } catch (e) {}
   if (saved && (jwtPayload(saved).exp || 0) * 1000 > Date.now() + 60e3) onCredential({ credential: saved });
@@ -482,7 +495,7 @@ document.getElementById('signOut').onclick = () => {
 
 /* All calls go to the Apps Script web app. text/plain avoids the browser's pre-flight check. */
 async function api(action, body) {
-  if (!AUTH.token || AUTH.exp < Date.now() + 30e3) {
+  if (CONFIG.AUTH_ENABLED && (!AUTH.token || AUTH.exp < Date.now() + 30e3)) {
     clearToken(); showGate('Your sign-in has expired. Sign in again to continue.', true, true);
     const e = new Error('Sign-in expired.'); e.auth = true; throw e;
   }
@@ -1144,7 +1157,7 @@ document.querySelectorAll('#logKind button').forEach(b => b.onclick = () => {
   fillTypes();
 });
 ['fDate', 'fBr', 'fType'].forEach(id => $(id).addEventListener('change', typeHint));
-['fDate', 'fBr', 'fType', 'fInv', 'fTot', 'fInt', 'fAgenda'].forEach(id => $(id).addEventListener('input', () => $(id).classList.remove('bad')));
+['fWho', 'fDate', 'fBr', 'fType', 'fInv', 'fTot', 'fInt', 'fAgenda'].forEach(id => $(id).addEventListener('input', () => $(id).classList.remove('bad')));
 
 /* ---------- Files ---------- */
 function compressImage(file, maxPx, q) {
@@ -1230,12 +1243,17 @@ const toB64 = blob => new Promise((res, rej) => {
 /* ---------- Validate + save ---------- */
 function readForm() {
   const v = id => $(id).value.trim();
-  return { kind: UP.kind, date: v('fDate'), branch: v('fBr'), type: v('fType'),
+  return { kind: UP.kind, submitter: v('fWho').toLowerCase(), date: v('fDate'), branch: v('fBr'), type: v('fType'),
            invited: v('fInv'), total: v('fTot'), intended: v('fInt'), agenda: v('fAgenda') };
 }
 function checkForm(f) {
   const bad = (id, msg) => { $(id).classList.add('bad'); $(id).focus(); return msg; };
   const n = s => /^\d+$/.test(s) ? +s : NaN;
+  if (!CONFIG.AUTH_ENABLED) {
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(f.submitter)) return bad('fWho', 'Enter your work email.');
+    const dom = CONFIG.DOMAIN && CONFIG.DOMAIN !== 'yourcompany.com' ? CONFIG.DOMAIN.toLowerCase() : '';
+    if (dom && f.submitter.split('@')[1] !== dom) return bad('fWho', 'Use your @' + dom + ' email.');
+  }
   if (!f.date) return bad('fDate', 'Choose the session date.');
   if (f.date > $('fDate').max) return bad('fDate', 'The session date cannot be in the future.');
   if ($('fDate').min && f.date < $('fDate').min) return bad('fDate', 'Sessions older than ' + lim('back') + ' days must be logged by an admin.');
@@ -1256,7 +1274,7 @@ function checkForm(f) {
 function setBusy(b) {
   UP.busy = b;
   ['logSave', 'logCancel', 'logX'].forEach(id => { $(id).disabled = b; });
-  ['fDate', 'fBr', 'fType', 'fInv', 'fTot', 'fInt', 'fAgenda'].forEach(id => { $(id).disabled = b; });
+  ['fWho', 'fDate', 'fBr', 'fType', 'fInv', 'fTot', 'fInt', 'fAgenda'].forEach(id => { $(id).disabled = b; });
   ['attDrop', 'picDrop'].forEach(id => $(id).setAttribute('aria-disabled', b));
   $('logSave').textContent = b ? 'Saving…' : 'Save session';
   drawFiles('att'); drawFiles('pic');
@@ -1272,7 +1290,7 @@ async function saveSession() {
   if (UP.busy) return;
   const f = readForm(), err = checkForm(f);
   if (err) { note(err, true); return; }
-  if (AUTH.exp - Date.now() < 5 * 60e3) {
+  if (CONFIG.AUTH_ENABLED && AUTH.exp - Date.now() < 5 * 60e3) {
     clearToken(); showGate('Your sign-in is about to expire. Sign in again; your entries are kept.', true, true);
     return;
   }
@@ -1286,6 +1304,7 @@ async function saveSession() {
       b = await api('begin', { fields: f, force: true });
     }
     sid = b.sessionId;
+    try { if (f.submitter) localStorage.setItem('ma_who', f.submitter); } catch (e) {}
     const all = UP.att.map((x, i) => ['att', x, i + 1]).concat(UP.pic.map((x, i) => ['pic', x, i + 1]));
     for (let i = 0; i < all.length; i++) {
       const [k, it, n] = all[i];
