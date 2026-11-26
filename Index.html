@@ -1,0 +1,1318 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Monthly activities</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+<style>
+  :root {
+    --bg:#f2f5f4; --panel:#ffffff; --ink:#14262b; --muted:#5d6e72; --line:#dbe3e1; --line2:#e8eeec;
+    --score:#4b46b8; --up:#0f6b5c; --down:#b3402f; --focus:#4b46b8;
+    --b0:#8a989b; --b0s:#eef1f1;
+    --b1:#a06d0c; --b1s:#fbf0d9;
+    --b2:#2f8a76; --b2s:#dcf0ea;
+    --b3:#0f6b5c; --b3s:#c4e4db;
+    --b4:#4b46b8; --b4s:#e3e2f7;
+  }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--ink); font-family:'IBM Plex Sans',system-ui,sans-serif; font-size:14px; }
+  .wrap { max-width:1240px; margin:0 auto; padding:20px 20px 40px; }
+  h1 { font-size:20px; font-weight:600; margin:0 0 14px; }
+  :focus-visible { outline:2px solid var(--focus); outline-offset:1px; }
+  [hidden] { display:none !important; }
+
+  /* ---------- Header ---------- */
+  .top { display:flex; flex-wrap:wrap; align-items:center; gap:8px 10px; margin-bottom:14px; }
+  .top h1 { margin:0; }
+  .top .grow { flex:1; }
+  .upd { font-size:12px; color:var(--muted); }
+  .me { display:flex; align-items:center; gap:4px; font-size:12.5px; color:var(--muted); }
+  .me b { color:var(--ink); font-weight:500; max-width:200px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .btn { all:unset; box-sizing:border-box; cursor:pointer; display:inline-flex; align-items:center; gap:6px; background:var(--panel); border:1px solid var(--line); border-radius:6px; padding:6px 12px; font-size:13px; font-weight:500; white-space:nowrap; }
+  .btn:hover { border-color:#b9c6c3; }
+  .btn.primary { background:var(--b3); border-color:var(--b3); color:#fff; }
+  .btn.primary:hover { background:#0c5a4d; }
+  .btn[disabled] { opacity:.55; cursor:not-allowed; }
+  .btn:focus-visible { outline:2px solid var(--focus); outline-offset:1px; }
+
+  /* ---------- Sign-in ---------- */
+  #gate { max-width:400px; margin:14vh auto 0; background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:28px 24px; text-align:center; }
+  #gate h1 { margin-bottom:6px; }
+  #gate p { color:var(--muted); margin:0 0 20px; }
+  #gBtn { display:flex; justify-content:center; min-height:44px; }
+  #gateMsg { margin-top:14px; font-size:13px; color:var(--muted); }
+  #gateMsg.err { color:var(--down); }
+
+  /* ---------- Top control bar ---------- */
+  .controls { display:flex; flex-wrap:wrap; gap:8px 10px; align-items:flex-end; background:var(--panel); border:1px solid var(--line); border-radius:8px; padding:8px 10px; }
+  .ctl-label { display:block; font-size:11px; font-weight:500; color:var(--muted); margin-bottom:2px; }
+  .linkbtn { all:unset; cursor:pointer; color:var(--muted); font-size:12.5px; padding:6px 4px; margin-left:auto; white-space:nowrap; }
+  .linkbtn:hover { color:var(--ink); text-decoration:underline; }
+
+  /* Single-select searchable dropdown */
+  .ss { position:relative; width:165px; }
+  .ss.wide { width:200px; }
+  .ss-btn { all:unset; box-sizing:border-box; width:100%; display:flex; align-items:center; gap:6px; background:var(--panel); border:1px solid var(--line); border-radius:6px; padding:5px 8px; font-size:13px; cursor:pointer; }
+  .ss-btn:hover { border-color:#b9c6c3; }
+  .ss.open .ss-btn { border-color:var(--focus); box-shadow:0 0 0 3px rgba(75,70,184,.12); }
+  .ss-v { flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .ss-v.all { color:var(--muted); }
+  .ss-btn svg { flex:none; color:var(--muted); transition:transform .15s; }
+  .ss.open .ss-btn svg { transform:rotate(180deg); }
+  .ss-pop { display:none; position:absolute; z-index:30; top:calc(100% + 4px); left:0; min-width:100%; width:300px; background:var(--panel); border:1px solid var(--line); border-radius:8px; box-shadow:0 10px 28px rgba(20,38,43,.14); overflow:hidden; }
+  .ss.open .ss-pop { display:block; }
+  .ss-q { width:100%; border:0; border-bottom:1px solid var(--line); padding:10px 12px; font:inherit; outline:none; }
+  .ss-list { list-style:none; margin:0; padding:4px; max-height:260px; overflow:auto; }
+  .ss-list li { display:flex; align-items:center; gap:8px; padding:7px 8px; border-radius:4px; cursor:pointer; word-break:break-all; }
+  .ss-list li .ck { width:14px; flex:none; color:var(--focus); font-weight:600; }
+  .ss-list li.act { background:var(--bg); }
+  .ss-list li.sel { font-weight:600; }
+  .ss-list li.empty { color:var(--muted); cursor:default; }
+  @media (prefers-reduced-motion: reduce) { .ss-btn svg { transition:none; } }
+
+  .seg { display:inline-flex; background:var(--bg); border:1px solid var(--line); border-radius:6px; padding:2px; }
+  .seg button { all:unset; cursor:pointer; padding:6px 14px; border-radius:4px; font-size:13px; font-weight:500; color:var(--muted); }
+  .seg button[aria-pressed="true"] { background:var(--panel); color:var(--ink); box-shadow:0 1px 2px rgba(20,38,43,.15); }
+  .seg button:focus-visible { outline:2px solid var(--focus); }
+
+  /* ---------- Tabs ---------- */
+  .tabs { display:flex; gap:2px; border-bottom:1px solid var(--line); margin:12px 0 12px; }
+  .tab { all:unset; cursor:pointer; padding:9px 16px; font-weight:500; color:var(--muted); border-bottom:2px solid transparent; margin-bottom:-1px; }
+  .tab:hover { color:var(--ink); }
+  .tab[aria-selected="true"] { color:var(--ink); font-weight:600; border-bottom-color:var(--ink); }
+  .tab:focus-visible { outline:2px solid var(--focus); outline-offset:-2px; }
+
+  /* ---------- Cards ---------- */
+  .card { background:var(--panel); border:1px solid var(--line); border-radius:8px; }
+  .card-head { display:flex; flex-wrap:wrap; align-items:center; gap:8px 16px; padding:10px 14px; border-bottom:1px solid var(--line); }
+  .card-title { font-size:14px; font-weight:600; margin:0; }
+  .tag { display:inline-block; margin-left:6px; padding:1px 8px; border-radius:4px; background:var(--bg); color:var(--muted); font-size:12px; font-weight:500; vertical-align:1px; }
+  .stats { display:flex; gap:18px; color:var(--muted); font-size:13px; font-variant-numeric:tabular-nums; }
+  .stats b { color:var(--ink); font-weight:600; }
+  .card-head .grow { flex:1; }
+  .card-head input[type=search] { width:240px; padding:7px 10px; border:1px solid var(--line); border-radius:6px; font:inherit; }
+
+  .up { color:var(--up); } .down { color:var(--down); } .flat { color:var(--muted); }
+
+  .tablewrap { overflow-x:auto; }
+  table { width:100%; border-collapse:collapse; font-variant-numeric:tabular-nums; }
+  th, td { padding:6px 10px; font-size:12.5px; text-align:right; border-bottom:1px solid var(--line2); white-space:nowrap; }
+  tr:last-child td { border-bottom:0; }
+  th { position:sticky; top:0; background:#f8faf9; font-weight:500; color:var(--muted); font-size:11px; border-bottom:1px solid var(--line); }
+  th.l, td.l { text-align:left; }
+  th[data-k] { cursor:pointer; user-select:none; }
+  th[data-k]:hover, th.sorted { color:var(--ink); }
+  th .arr { display:inline-block; width:10px; font-size:10px; }
+  tbody tr:hover { background:#f8faf9; }
+  td.na { color:var(--b0); }
+  .scroll { max-height:560px; overflow:auto; }
+
+  /* ---------- Monthly activities ---------- */
+  #pM th, #pM td { white-space:normal; vertical-align:top; padding:6px 8px; }
+  #pM td.nw, #pM th.nw { white-space:nowrap; }
+  #pM .st { white-space:nowrap; }
+  #pM .card + .card { margin-top:12px; }
+  .hintsm { font-size:12px; color:var(--muted); }
+  .freeze { max-height:calc(100vh - 120px); overflow:auto; }
+  .freeze thead th { position:sticky; top:0; z-index:2; background:#f8faf9; box-shadow:inset 0 -1px 0 var(--line); }
+  #pM .card[hidden] + .card { margin-top:0; }
+  table.sum td.c { cursor:pointer; }
+  table.sum td.c:hover { background:var(--b4s); text-decoration:underline; }
+  table.sum td.on { background:var(--b4s); box-shadow:inset 0 0 0 1px var(--b4); font-weight:600; }
+  table.sum tr.tot td { font-weight:600; background:#f8faf9; border-top:1px solid var(--line); cursor:default; }
+  table.sum td.zero { color:var(--b0); }
+  table.sum .sub { display:block; font-size:10.5px; font-weight:400; color:var(--muted); line-height:1.2; }
+  table.sum td.rowname { font-weight:500; cursor:pointer; }
+  table.sum td.rowname:hover { text-decoration:underline; }
+  .st { display:inline-block; font-size:11px; font-weight:600; padding:1px 8px; border-radius:999px; text-decoration:none; }
+  .st.ok { color:var(--b3); background:var(--b3s); }
+  .st.no { color:var(--down); background:#f8e3df; }
+  a.st:hover { text-decoration:underline; }
+  td.att { font-weight:600; }
+  .att.hi { color:var(--up); } .att.mid { color:var(--b1); } .att.lo { color:var(--down); }
+  #pM td.agenda { text-align:left; min-width:160px; }
+  .chip { all:unset; cursor:pointer; font-size:12px; font-weight:500; color:var(--b4); background:var(--b4s); padding:3px 10px; border-radius:999px; }
+  .chip:hover { text-decoration:underline; }
+  .chip:focus-visible { outline:2px solid var(--focus); }
+
+  /* Plan vs actual */
+  table.plan th.pc { text-align:center; }
+  table.plan td.ps { text-align:center; font-weight:600; white-space:nowrap; }
+  .ps-ontime { color:var(--b3); background:var(--b3s); }
+  .ps-late   { color:var(--b1); background:var(--b1s); }
+  .ps-missed { color:var(--down); background:#f8e3df; }
+  td.comp { font-weight:600; white-space:nowrap; }
+  .cbar { display:inline-block; width:56px; height:6px; background:var(--line2); border-radius:3px; vertical-align:middle; margin-right:6px; overflow:hidden; }
+  .cbar i { display:block; height:100%; }
+  table.plan tr.child td { background:#fbfcfc; }
+  table.plan tr.child td.l { padding-left:28px; }
+  table.plan tr.child td.ps, #volSum td.ps { white-space:normal; }
+  table.plan tr.tot td { font-weight:600; background:#f8faf9; border-top:1px solid var(--line); }
+  table.plan tr.grp td.l { font-weight:600; cursor:pointer; }
+  .tog { display:inline-block; width:14px; color:var(--muted); font-size:10px; }
+  .linkbtn.inl { margin-left:0; padding:2px 6px; }
+  table.plan .sub { display:block; font-size:10.5px; font-weight:400; color:var(--muted); line-height:1.2; }
+  .muted { color:var(--muted); }
+
+  .err { color:var(--down); }
+  .msg { padding:24px 14px; color:var(--muted); text-align:left !important; }
+
+  /* ---------- Log a session dialog ---------- */
+  dialog.logdlg { border:0; padding:0; border-radius:10px; width:min(640px, calc(100vw - 20px)); max-height:calc(100vh - 20px); color:var(--ink); box-shadow:0 24px 60px rgba(20,38,43,.28); }
+  dialog.logdlg::backdrop { background:rgba(20,38,43,.45); }
+  .dl { display:flex; flex-direction:column; max-height:calc(100vh - 20px); }
+  .dl-head { display:flex; align-items:center; gap:10px; padding:12px 16px; border-bottom:1px solid var(--line); }
+  .dl-head h2 { font-size:15px; font-weight:600; margin:0; flex:1; }
+  .x { all:unset; cursor:pointer; font-size:15px; line-height:1; color:var(--muted); padding:6px 8px; border-radius:4px; }
+  .x:hover { background:var(--bg); color:var(--ink); }
+  .x:focus-visible { outline:2px solid var(--focus); }
+  .dl-body { padding:14px 16px 16px; overflow:auto; display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+  .fld { display:flex; flex-direction:column; gap:4px; min-width:0; }
+  .fld.full, .nums { grid-column:1 / -1; }
+  .fld > label, .fld > .lab { font-size:12px; font-weight:500; color:var(--muted); }
+  .fld input, .fld select, .fld textarea { font:inherit; font-size:14px; padding:8px 10px; border:1px solid var(--line); border-radius:6px; background:var(--panel); color:var(--ink); width:100%; min-height:38px; }
+  .fld textarea { min-height:72px; resize:vertical; }
+  .fld input:focus, .fld select:focus, .fld textarea:focus { outline:none; border-color:var(--focus); box-shadow:0 0 0 3px rgba(75,70,184,.12); }
+  .fld .bad { border-color:var(--down); box-shadow:0 0 0 3px rgba(179,64,47,.12); }
+  .fld .hintsm.warn { color:var(--b1); }
+  .nums { display:grid; grid-template-columns:repeat(3,1fr); gap:12px; }
+  .drop { border:1.5px dashed #c5d1ce; border-radius:8px; padding:14px 12px; text-align:center; color:var(--muted); font-size:13px; cursor:pointer; background:#fbfcfc; }
+  .drop:hover, .drop.over { border-color:var(--b3); background:var(--b3s); color:var(--ink); }
+  .drop:focus-visible { outline:2px solid var(--focus); }
+  .drop[aria-disabled="true"] { opacity:.6; cursor:not-allowed; }
+  .files { list-style:none; margin:6px 0 0; padding:0; display:flex; flex-direction:column; gap:4px; }
+  .files:empty { display:none; }
+  .files li { display:flex; align-items:center; gap:10px; font-size:12.5px; padding:4px 4px 4px 4px; border:1px solid var(--line2); border-radius:6px; }
+  .files img, .files .ic { width:38px; height:38px; object-fit:cover; border-radius:4px; flex:none; background:var(--bg); display:flex; align-items:center; justify-content:center; font-size:10px; font-weight:600; color:var(--muted); }
+  .files .fn { flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .files .sz { color:var(--muted); white-space:nowrap; font-variant-numeric:tabular-nums; }
+  .files .stt { font-weight:600; white-space:nowrap; font-size:12px; color:var(--muted); }
+  .files .stt.done { color:var(--up); }
+  .dl-foot { display:flex; align-items:center; gap:8px; padding:12px 16px; border-top:1px solid var(--line); }
+  .dl-foot .note { flex:1; font-size:12.5px; color:var(--muted); }
+  .dl-foot .note.err { color:var(--down); }
+
+  .toast { position:fixed; left:50%; bottom:24px; transform:translateX(-50%); background:var(--ink); color:#fff; padding:10px 16px; border-radius:8px; font-size:13px; z-index:100; box-shadow:0 8px 24px rgba(20,38,43,.25); }
+
+  @media (max-width:900px) {
+    .ss, .ss.wide { width:calc(50% - 5px); }
+    .card-head input[type=search] { width:100%; }
+  }
+  @media (max-width:600px) {
+    .dl-body { grid-template-columns:1fr; }
+    .nums { grid-template-columns:1fr 1fr 1fr; gap:8px; }
+    .me b { max-width:120px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ================= Sign-in ================= -->
+<div id="gate" hidden>
+  <h1>Monthly activities</h1>
+  <p>Sign in with your work Google account.</p>
+  <div id="gBtn"></div>
+  <div id="gateMsg"></div>
+</div>
+
+<!-- ================= Dashboard ================= -->
+<div class="wrap" id="main" hidden>
+  <div class="top">
+    <h1>Monthly activities</h1>
+    <div class="grow"></div>
+    <span class="upd" id="upd"></span>
+    <button type="button" class="btn" id="refreshBtn">Refresh</button>
+    <button type="button" class="btn primary" id="logBtn" hidden>+ Log a session</button>
+    <span class="me"><b id="meName"></b><button type="button" class="linkbtn inl" id="signOut">Sign out</button></span>
+  </div>
+
+  <div class="controls">
+    <div class="ss" id="fCluster"></div>
+    <div class="ss" id="fBranch"></div>
+    <div class="ss" id="fActFy"></div>
+    <div class="ss" id="fActQ"></div>
+    <div class="ss" id="fMonth"></div>
+    <button class="linkbtn" id="reset">Reset filters</button>
+  </div>
+
+  <div class="tabs" role="tablist">
+    <button class="tab" role="tab" data-v="sched" aria-selected="true">Scheduled</button>
+    <button class="tab" role="tab" data-v="vol" aria-selected="false">Voluntary</button>
+  </div>
+
+  <section id="pM" role="tabpanel">
+    <div id="actState" class="msg">Loading activities…</div>
+    <div id="actBody" hidden>
+      <div class="msg err" id="mapWarn" hidden style="padding:0 2px 10px"></div>
+      <div class="card" id="volCard" hidden>
+        <div class="card-head">
+          <h2 class="card-title"><span id="volTitle">Voluntary sessions</span><span class="tag" id="volPeriod"></span></h2>
+          <div class="grow"></div>
+          <span id="volTools"></span>
+        </div>
+        <div class="tablewrap freeze"><table class="sum plan" id="volSum"></table></div>
+      </div>
+      <div class="card" id="planCard">
+        <div class="card-head">
+          <h2 class="card-title">Plan vs actual<span class="tag" id="planPeriod"></span></h2>
+          <div class="grow"></div>
+          <span id="planTools"></span>
+        </div>
+        <div class="tablewrap freeze"><table class="plan" id="planTbl"></table></div>
+      </div>
+      <div class="card">
+        <div class="card-head">
+          <h2 class="card-title" id="mDetTitle">Session details</h2>
+          <div class="stats" id="mStats"></div>
+          <span id="mChip"></span>
+          <div class="grow"></div>
+          <input type="search" id="mSearch" placeholder="Search branch, type, agenda" aria-label="Search sessions">
+        </div>
+        <div class="tablewrap scroll"><table id="mTbl"></table></div>
+      </div>
+    </div>
+  </section>
+</div>
+
+<!-- ================= Log a session ================= -->
+<dialog class="logdlg" id="logDlg" aria-labelledby="logTitle">
+  <div class="dl">
+    <div class="dl-head">
+      <h2 id="logTitle">Log a session</h2>
+      <button type="button" class="x" id="logX" aria-label="Close">✕</button>
+    </div>
+    <div class="dl-body">
+      <div class="fld full">
+        <span class="lab">Session</span>
+        <div class="seg" id="logKind">
+          <button type="button" data-k="vol" aria-pressed="true">Voluntary</button>
+          <button type="button" data-k="sched" aria-pressed="false">Scheduled</button>
+        </div>
+      </div>
+      <div class="fld"><label for="fDate">Date</label><input type="date" id="fDate"></div>
+      <div class="fld"><label for="fBr">Branch</label><select id="fBr"></select></div>
+      <div class="fld full">
+        <label for="fType">Session type</label><select id="fType"></select>
+        <span class="hintsm" id="fTypeHint"></span>
+      </div>
+      <div class="nums">
+        <div class="fld"><label for="fInv">To be invited</label><input type="number" id="fInv" min="1" step="1" inputmode="numeric"></div>
+        <div class="fld"><label for="fTot">Total attended</label><input type="number" id="fTot" min="1" step="1" inputmode="numeric"></div>
+        <div class="fld"><label for="fInt">Intended partners attended</label><input type="number" id="fInt" min="0" step="1" inputmode="numeric"></div>
+      </div>
+      <div class="fld full"><label for="fAgenda">Agenda</label><textarea id="fAgenda" maxlength="1000" placeholder="What was covered"></textarea></div>
+      <div class="fld full">
+        <span class="lab" id="attLab">Attendance sheet: photo, PDF or Excel</span>
+        <div class="drop" id="attDrop" role="button" tabindex="0" aria-describedby="attLab">Add attendance sheet</div>
+        <input type="file" id="attIn" multiple accept="image/*,.pdf,.xlsx,.xls,.csv" hidden>
+        <ul class="files" id="attList"></ul>
+      </div>
+      <div class="fld full">
+        <span class="lab" id="picLab">Session photos</span>
+        <div class="drop" id="picDrop" role="button" tabindex="0" aria-describedby="picLab">Add photos</div>
+        <input type="file" id="picIn" multiple accept="image/*" hidden>
+        <ul class="files" id="picList"></ul>
+      </div>
+    </div>
+    <div class="dl-foot">
+      <span class="note" id="logNote" role="status"></span>
+      <button type="button" class="btn" id="logCancel">Cancel</button>
+      <button type="button" class="btn primary" id="logSave">Save session</button>
+    </div>
+  </div>
+</dialog>
+
+<script>
+/* =====================================================================
+   CONFIG — fill these in
+   ===================================================================== */
+const CONFIG = {
+  API_URL: 'https://script.google.com/macros/s/PASTE_DEPLOYMENT_ID/exec',   // Apps Script web app /exec URL
+  CLIENT_ID: 'PASTE_CLIENT_ID.apps.googleusercontent.com',                  // same as OAUTH_CLIENT_ID in Code.gs
+  DOMAIN: 'yourcompany.com',                                                // work email domain (sign-in hint)
+  PIC_MAX_PX: 1600, PIC_QUALITY: 0.72,     // session photos → ~200–400 KB
+  ATT_MAX_PX: 2200, ATT_QUALITY: 0.82,     // attendance sheet photos stay readable
+  AUTO_REFRESH_MIN: 5
+};
+
+const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const fmtInt = n => Math.round(n).toLocaleString('en-IN');
+const fmt1 = n => (Math.round(n * 10) / 10).toLocaleString('en-IN');
+
+/* =====================================================================
+   Single-select searchable dropdown
+   ===================================================================== */
+const CHEVRON = '<svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true"><path d="M2.5 4.5 6 8l3.5-3.5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+function SS(el, label, allLabel, onChange) {
+  this.el = el; this.onChange = onChange; this.allLabel = allLabel;
+  this.opts = []; this.val = ''; this.q = ''; this.act = 0; this.shown = [];
+  const id = el.id + 'L';
+  el.innerHTML =
+    '<span class="ctl-label" id="' + id + '">' + label + '</span>' +
+    '<button type="button" class="ss-btn" aria-haspopup="listbox" aria-expanded="false" aria-labelledby="' + id + '"><span class="ss-v"></span>' + CHEVRON + '</button>' +
+    '<div class="ss-pop"><input type="search" class="ss-q" placeholder="Search ' + label.toLowerCase() + '" autocomplete="off" aria-label="Search ' + label.toLowerCase() + '">' +
+    '<ul class="ss-list" role="listbox" aria-labelledby="' + id + '"></ul></div>';
+  this.btn = el.querySelector('.ss-btn'); this.vEl = el.querySelector('.ss-v');
+  this.qEl = el.querySelector('.ss-q'); this.list = el.querySelector('.ss-list');
+  const self = this;
+  this.btn.onclick = e => { e.stopPropagation(); el.classList.contains('open') ? self.close() : self.open(); };
+  el.querySelector('.ss-pop').onclick = e => e.stopPropagation();
+  this.qEl.oninput = () => { self.q = self.qEl.value.toLowerCase(); self.act = 0; self.draw(); };
+  this.qEl.onkeydown = e => {
+    if (e.key === 'ArrowDown') { e.preventDefault(); self.act = Math.min(self.act + 1, self.shown.length - 1); self.draw(); }
+    else if (e.key === 'ArrowUp') { e.preventDefault(); self.act = Math.max(self.act - 1, 0); self.draw(); }
+    else if (e.key === 'Enter') { e.preventDefault(); if (self.shown[self.act]) self.pick(self.shown[self.act].v); }
+    else if (e.key === 'Escape') { self.close(); self.btn.focus(); }
+  };
+  this.btn.onkeydown = e => { if (e.key === 'ArrowDown') { e.preventDefault(); self.open(); } };
+  this.label();
+}
+SS.prototype.open = function () {
+  document.querySelectorAll('.ss.open').forEach(x => x.classList.remove('open'));
+  this.el.classList.add('open'); this.btn.setAttribute('aria-expanded', 'true');
+  this.q = ''; this.qEl.value = '';
+  const all = this.items(); this.act = Math.max(0, all.findIndex(o => o.v === this.val));
+  this.draw(); this.qEl.focus();
+};
+SS.prototype.close = function () { this.el.classList.remove('open'); this.btn.setAttribute('aria-expanded', 'false'); };
+SS.prototype.items = function () { return [{ v: '', t: this.allLabel }].concat(this.opts.map(o => typeof o === 'string' ? { v: o, t: o } : o)); };
+SS.prototype.draw = function () {
+  const q = this.q;
+  this.shown = this.items().filter(o => !q || o.t.toLowerCase().includes(q));
+  if (!this.shown.length) { this.list.innerHTML = '<li class="empty">No matches</li>'; return; }
+  this.list.innerHTML = this.shown.map((o, i) =>
+    '<li role="option" data-i="' + i + '" aria-selected="' + (o.v === this.val) + '" class="' + (o.v === this.val ? 'sel ' : '') + (i === this.act ? 'act' : '') + '">' +
+    '<span class="ck">' + (o.v === this.val ? '✓' : '') + '</span>' + esc(o.t) + '</li>').join('');
+  this.list.querySelectorAll('li[data-i]').forEach(li => {
+    li.onclick = () => this.pick(this.shown[+li.dataset.i].v);
+    li.onmousemove = () => { const i = +li.dataset.i; if (i !== this.act) { this.act = i; this.list.querySelectorAll('li').forEach(x => x.classList.toggle('act', +x.dataset.i === i)); } };
+  });
+  const a = this.list.querySelector('li.act'); if (a && a.scrollIntoView) a.scrollIntoView({ block: 'nearest' });
+};
+SS.prototype.pick = function (v) { this.close(); this.btn.focus(); if (v !== this.val) { this.val = v; this.label(); this.onChange(); } };
+SS.prototype.label = function () {
+  const o = this.items().find(x => x.v === this.val);
+  this.vEl.textContent = o ? o.t : this.allLabel;
+  this.vEl.classList.toggle('all', !this.val);
+};
+SS.prototype.setOptions = function (opts) {
+  this.opts = opts;
+  if (this.val && !this.items().some(o => o.v === this.val)) this.val = '';
+  this.label();
+};
+SS.prototype.reset = function () { this.val = ''; this.label(); };
+document.addEventListener('click', () => document.querySelectorAll('.ss.open').forEach(x => x.classList.remove('open')));
+
+/* ---------- Filters ---------- */
+const fCluster = new SS(document.getElementById('fCluster'), 'Cluster', 'All clusters', () => { M.pick = null; refreshBranch(); render(); });
+const fBranch  = new SS(document.getElementById('fBranch'), 'Branch', 'All branches', () => { M.pick = null; render(); });
+const fActFy   = new SS(document.getElementById('fActFy'), 'Financial year', 'All years', () => { M.pick = null; refreshMonths(); render(); });
+const fActQ    = new SS(document.getElementById('fActQ'), 'Quarter', 'All quarters', () => { M.pick = null; refreshMonths(); render(); });
+const fMonth   = new SS(document.getElementById('fMonth'), 'Month', 'All months', () => { M.pick = null; render(); });
+
+document.getElementById('reset').onclick = () => {
+  fCluster.reset(); fBranch.reset(); fActFy.reset(); fActQ.reset(); fMonth.reset();
+  refreshMonths();
+  M.pick = null; M.q = ''; document.getElementById('mSearch').value = '';
+  refreshCluster(); refreshBranch(); render();
+};
+
+/* Cluster / branch lists come from the Mapping sheet (falls back to the session data) */
+const mapRows = () => MAP && MAP.length ? MAP : (ACT || []);
+function refreshCluster() {
+  fCluster.setOptions([...new Set(mapRows().map(r => r.cluster))].filter(Boolean).sort());
+}
+function refreshBranch() {
+  const rows = fCluster.val ? mapRows().filter(r => r.cluster === fCluster.val) : mapRows();
+  fBranch.setOptions([...new Set(rows.map(r => r.branch))].filter(Boolean).sort());
+}
+function render() { renderActivities(); }
+
+/* =====================================================================
+   SIGN-IN (Google Identity Services) + API
+   ===================================================================== */
+const AUTH = { token: '', exp: 0 };
+let ME = null;
+const jwtPayload = t => {
+  try { return JSON.parse(decodeURIComponent(escape(atob(t.split('.')[1].replace(/-/g, '+').replace(/_/g, '/'))))); }
+  catch (e) { return {}; }
+};
+function setToken(t) {
+  AUTH.token = t; AUTH.exp = (jwtPayload(t).exp || 0) * 1000;
+  try { sessionStorage.setItem('ma_tok', t); } catch (e) {}
+}
+function clearToken() {
+  AUTH.token = ''; AUTH.exp = 0;
+  try { sessionStorage.removeItem('ma_tok'); } catch (e) {}
+}
+function showGate(msg, isErr, prompt) {
+  const d = document.getElementById('logDlg'); if (d.open) d.close();
+  document.getElementById('main').hidden = true;
+  document.getElementById('gate').hidden = false;
+  const m = document.getElementById('gateMsg');
+  m.textContent = msg || ''; m.className = isErr ? 'err' : '';
+  if (prompt && window.google && google.accounts) { try { google.accounts.id.prompt(); } catch (e) {} }
+}
+function onCredential(resp) {
+  setToken(resp.credential);
+  document.getElementById('gate').hidden = true;
+  document.getElementById('main').hidden = false;
+  loadAll();
+}
+function initAuth() {
+  let saved = '';
+  try { saved = sessionStorage.getItem('ma_tok') || ''; } catch (e) {}
+  if (saved && (jwtPayload(saved).exp || 0) * 1000 > Date.now() + 60e3) onCredential({ credential: saved });
+  else showGate();
+  (function waitGis() {
+    if (!(window.google && google.accounts && google.accounts.id)) { setTimeout(waitGis, 150); return; }
+    google.accounts.id.initialize({ client_id: CONFIG.CLIENT_ID, callback: onCredential, auto_select: true, hd: CONFIG.DOMAIN, cancel_on_tap_outside: false });
+    google.accounts.id.renderButton(document.getElementById('gBtn'), { theme: 'outline', size: 'large', text: 'signin_with', shape: 'rectangular', width: 260 });
+    if (!AUTH.token) google.accounts.id.prompt();
+  })();
+}
+document.getElementById('signOut').onclick = () => {
+  try { google.accounts.id.disableAutoSelect(); } catch (e) {}
+  clearToken(); ME = null;
+  showGate('You are signed out.');
+};
+
+/* All calls go to the Apps Script web app. text/plain avoids the browser's pre-flight check. */
+async function api(action, body) {
+  if (!AUTH.token || AUTH.exp < Date.now() + 30e3) {
+    clearToken(); showGate('Your sign-in has expired. Sign in again to continue.', true, true);
+    const e = new Error('Sign-in expired.'); e.auth = true; throw e;
+  }
+  let res;
+  try {
+    res = await fetch(CONFIG.API_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify(Object.assign({ action: action, token: AUTH.token }, body || {}))
+    });
+  } catch (e) { throw new Error('Could not reach the server. Check your internet connection.'); }
+  let j;
+  try { j = await res.json(); } catch (e) { throw new Error('The server sent an unexpected reply (' + res.status + ').'); }
+  if (!j.ok) {
+    const e = new Error(j.error || 'The request failed.'); e.auth = !!j.auth;
+    if (e.auth) { clearToken(); showGate(j.error, true, false); }
+    throw e;
+  }
+  return j.data;
+}
+
+function toast(msg) {
+  const t = document.createElement('div');
+  t.className = 'toast'; t.setAttribute('role', 'status'); t.textContent = msg;
+  document.body.appendChild(t); setTimeout(() => t.remove(), 3500);
+}
+
+/* =====================================================================
+   DATA LOAD (one call: sessions + mapping + plan + who is signed in)
+   ===================================================================== */
+let LOADING = false;
+async function loadAll() {
+  if (LOADING) return;
+  LOADING = true;
+  const btn = document.getElementById('refreshBtn');
+  btn.disabled = true; btn.textContent = 'Refreshing…';
+  try {
+    const d = await api('bootstrap');
+    ME = d.me;
+    const nm = document.getElementById('meName');
+    nm.textContent = ME.name || ME.email; nm.title = ME.email + ' (' + ME.role + ')';
+    document.getElementById('logBtn').hidden = !ME.canUpload;
+
+    MAP = d.mapping || []; MAP_ERR = d.mapErr || '';
+    if (d.actErr) { ACT_ERR = d.actErr; ACT = null; } else { ACT_ERR = ''; ACT = d.activities || []; }
+    if (d.planErr) { PLAN_ERR = d.planErr; PLAN = null; } else { PLAN_ERR = ''; setPlan(d.plan); }
+    applyMapping();
+    if (ACT) {
+      fActFy.setOptions([...new Set(ACT.map(fyOf))].filter(Boolean).sort().reverse());
+      fActQ.setOptions(['Q1', 'Q2', 'Q3', 'Q4'].map(q => ({ v: q, t: Q_LABEL[q] })));
+      refreshMonths();
+    }
+    refreshCluster(); refreshBranch(); render();
+    document.getElementById('upd').textContent = 'Updated ' + new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
+  } catch (e) {
+    if (!e.auth) { if (ACT) toast(e.message); else { ACT_ERR = e.message; render(); } }
+  } finally {
+    LOADING = false; btn.disabled = false; btn.textContent = 'Refresh';
+  }
+}
+function setPlan(data) {
+  data = Array.isArray(data) ? { plan: data, vol: [] } : (data || { plan: [], vol: [] });
+  VOL_T = (data.vol || []).map(v => ({ activity: v.activity, freq: v.freq, n: normT(v.activity) }));
+  PLAN = (data.plan || []).filter(p => p.date && p.activity)
+    .map(p => Object.assign(p, { n: normT(p.activity) }))
+    .sort((a, b) => a.date.localeCompare(b.date));
+}
+document.getElementById('refreshBtn').onclick = loadAll;
+setInterval(() => {
+  if (!document.hidden && AUTH.token && !UP.busy && !document.getElementById('main').hidden) loadAll();
+}, CONFIG.AUTO_REFRESH_MIN * 60e3);
+
+/* =====================================================================
+   MONTHLY ACTIVITIES
+   ===================================================================== */
+let ACT = null, ACT_ERR = '';
+const M = { view: 'sched', pick: null, q: '', sortK: 'date', sortDir: -1, rows: [] };
+const isSched = r => r.kind !== 'vol';
+const numOf = v => { const x = parseFloat(String(v == null ? '' : v).replace(/[^0-9.\-]/g, '')); return isNaN(x) ? null : x; };
+const sumDim = () => (fCluster.val || fBranch.val) ? 'branch' : 'cluster';
+const MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+const monthKey = r => r.date ? r.date.slice(0, 7) : '';
+/* Indian financial year: Apr–Mar. FY27 = Apr 2026 – Mar 2027. Q1 Apr–Jun, Q2 Jul–Sep, Q3 Oct–Dec, Q4 Jan–Mar */
+const fyOf = r => { if (!r.date) return ''; const y = +r.date.slice(0, 4), m = +r.date.slice(5, 7); return 'FY' + String(m >= 4 ? y + 1 : y).slice(-2); };
+const qOf = r => { if (!r.date) return ''; const m = +r.date.slice(5, 7); return 'Q' + (m >= 4 ? Math.floor((m - 4) / 3) + 1 : 4); };
+const Q_LABEL = { Q1: 'Q1 (Apr–Jun)', Q2: 'Q2 (Jul–Sep)', Q3: 'Q3 (Oct–Dec)', Q4: 'Q4 (Jan–Mar)' };
+function refreshMonths() {
+  if (!ACT) return;
+  const rows = ACT.filter(r => (!fActFy.val || fyOf(r) === fActFy.val) && (!fActQ.val || qOf(r) === fActQ.val));
+  const ks = [...new Set(rows.map(monthKey))].filter(Boolean).sort().reverse();
+  fMonth.setOptions(ks.map(k => ({ v: k, t: monthLabel(k) })));
+}
+const monthLabel = k => k ? MON[+k.slice(5, 7) - 1] + ' ' + k.slice(0, 4) : 'No date';
+const fmtDate = r => { if (!r.date) return esc(r.dateText || '—'); const p = r.date.split('-'); return +p[2] + ' ' + MON[+p[1] - 1] + ' ' + p[0]; };
+const isUrl = v => /^https?:\/\//i.test(String(v || '').trim());
+const uploaded = (text, url) => !!url || (String(text || '').trim() !== '' &&
+  !/^(no|n|false|0|pending|na|n\/a|nil|-|missing|not\b.*)$/i.test(String(text).trim()));
+const typeOf = r => r.type || 'Unspecified';
+const attCls = p => p === null ? '' : p >= 80 ? 'hi' : p >= 50 ? 'mid' : 'lo';
+
+/* Mapping sheet decides each branch's cluster */
+let MAP = null, MAP_ERR = '';
+const keyB = v => String(v || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+function applyMapping() {
+  if (!ACT || !MAP || !MAP.length) return;
+  const m = {};
+  MAP.forEach(x => { m[keyB(x.branch)] = x; });
+  ACT.forEach(r => { const x = m[keyB(r.branch)]; if (x) { r.branch = x.branch; r.cluster = x.cluster; } });
+}
+
+const mSearch = document.getElementById('mSearch');
+mSearch.oninput = () => { M.q = mSearch.value.toLowerCase(); drawActTable(); };
+
+function renderActivities() {
+  const st = document.getElementById('actState'), body = document.getElementById('actBody');
+  if (ACT_ERR || !ACT) {
+    st.hidden = false; body.hidden = true;
+    st.className = 'msg' + (ACT_ERR ? ' err' : '');
+    st.textContent = ACT_ERR || 'Loading activities…';
+    return;
+  }
+  st.hidden = true; body.hidden = false;
+  const mw = document.getElementById('mapWarn');
+  mw.hidden = !MAP_ERR;
+  mw.textContent = MAP_ERR ? 'Mapping sheet could not be read, using clusters from the activity data instead. ' + MAP_ERR : '';
+  M.rows = ACT.filter(r =>
+    (!fCluster.val || r.cluster === fCluster.val) &&
+    (!fBranch.val || r.branch === fBranch.val) &&
+    (!fActFy.val || fyOf(r) === fActFy.val) &&
+    (!fActQ.val || qOf(r) === fActQ.val) &&
+    (!fMonth.val || monthKey(r) === fMonth.val));
+  const vol = M.view === 'vol';
+  document.getElementById('volCard').hidden = !vol;
+  document.getElementById('planCard').hidden = vol;
+  document.getElementById('mDetTitle').textContent = vol ? 'Voluntary session details' : 'Scheduled session details';
+  if (M.pick && (!vol || !M.rows.some(r => !isSched(r) && pickMatch(r)))) M.pick = null;
+  MATCH = matchAll();
+  if (vol) drawVolSummary(); else drawPlan();
+  drawActTable();
+}
+
+const pickMatch = r => !M.pick || ((r[M.pick.dim] || '—') === M.pick.val && (!M.pick.type || (isSched(r) ? typeOf(r) : (VOL_COL.get(r) || volType(r))) === M.pick.type));
+
+document.querySelectorAll('.tabs .tab').forEach(b => b.onclick = () => {
+  M.view = b.dataset.v; M.pick = null;
+  document.querySelectorAll('.tabs .tab').forEach(x => x.setAttribute('aria-selected', x === b));
+  render();
+});
+document.querySelector('.tabs').onkeydown = e => {
+  if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return;
+  const next = [...document.querySelectorAll('.tabs .tab')].find(x => x.getAttribute('aria-selected') !== 'true');
+  next.click(); next.focus();
+};
+
+/* Voluntary activities + expected frequency per month (Activity sheet, kept separate from the schedule) */
+let VOL_T = [];
+let VOL_COL = new Map();   // voluntary session → its column (e.g. "Client Meet 2")
+function volType(r) {
+  if (!VOL_T.length) return typeOf(r);
+  const sn = normT(r.type);
+  let best = null, bs = 0;
+  VOL_T.forEach(v => { const sc = typeScore(sn, v.n); if (sc > bs) { bs = sc; best = v; } });
+  if (best) return best.activity;
+  const misc = VOL_T.find(v => /^misc/.test(v.n));
+  return misc ? misc.activity : typeOf(r);
+}
+function periodMonths() {
+  const d = new Date(), cur = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
+  const ks = (ACT || []).filter(r => !isSched(r)).map(monthKey).filter(Boolean).sort();
+  if (!ks.length) return [];
+  let y = +ks[0].slice(0, 4), m = +ks[0].slice(5, 7);
+  const out = [];
+  for (;;) {
+    const k = y + '-' + String(m).padStart(2, '0');
+    if (k > cur) break;
+    if (inPeriod({ date: k + '-01' })) out.push(k);
+    if (++m > 12) { m = 1; y++; }
+  }
+  return out;
+}
+
+const VOL_OPEN = new Set();
+const VOL_SORT = { k: 'name', dir: 1 };
+function drawVolSummary() {
+  const rows = M.rows.filter(r => !isSched(r)), isC = sumDim() === 'cluster';
+  const bc = branchCluster();
+  const names = new Set(scopeBranches());
+  rows.forEach(r => { if (r.branch) names.add(r.branch); });
+  const clusterOf = b => bc[b] || (rows.find(r => r.branch === b) || {}).cluster || '—';
+  const months = periodMonths(), nm = months.length;
+  document.getElementById('volTitle').textContent = 'Voluntary sessions';
+  document.getElementById('volPeriod').textContent = periodText() ||
+    (nm ? (nm === 1 ? monthLabel(months[0]) : monthLabel(months[0]) + ' – ' + monthLabel(months[nm - 1])) : '');
+
+  const COLS = [];
+  VOL_T.forEach(v => {
+    const f = v.freq && v.freq > 1 ? Math.round(v.freq) : 0;
+    if (f) for (let k = 1; k <= f; k++) COLS.push({ key: v.activity + ' ' + k, act: v.activity, slot: k, slots: f, tg: nm });
+    else COLS.push({ key: v.activity, act: v.activity, slot: 1, slots: 1, tg: v.freq ? v.freq * nm : null, perM: v.freq });
+  });
+  [...new Set(rows.map(volType))].filter(t => !COLS.some(c => c.act === t)).sort()
+    .forEach(t => COLS.push({ key: t, act: t, slot: 1, slots: 1, tg: null }));
+  const types = COLS.map(c => c.key);
+  const colOf = k => COLS.find(c => c.key === k);
+  const target = k => colOf(k).tg;
+
+  VOL_COL = new Map();
+  const B = {};
+  names.forEach(b => { B[b] = { name: b, c: {}, d: {}, m: {} }; });
+  const grp = {};
+  rows.forEach(r => { const k = r.branch + '|' + volType(r) + '|' + monthKey(r); (grp[k] = grp[k] || []).push(r); });
+  Object.values(grp).forEach(list => {
+    list.sort((a, b) => (a.date || '').localeCompare(b.date || ''));
+    list.forEach((r, i) => {
+      const act = volType(r), cs = COLS.filter(c => c.act === act);
+      const col = cs.length > 1 ? cs[Math.min(i, cs.length - 1)] : cs[0];
+      VOL_COL.set(r, col.key);
+      const x = B[r.branch]; if (!x) return;
+      x.c[col.key] = (x.c[col.key] || 0) + 1;
+      (x.d[col.key] = x.d[col.key] || []).push(r);
+      const mm = x.m[col.key] || (x.m[col.key] = {}), mk = monthKey(r);
+      mm[mk] = (mm[mk] || 0) + 1;
+    });
+  });
+  Object.values(B).forEach(x => {
+    x.v = {};
+    COLS.forEach(c => {
+      const per = c.slots > 1 ? 1 : (c.perM || 0), mm = x.m[c.key] || {};
+      x.v[c.key] = c.tg ? Object.values(mm).reduce((t, n) => t + Math.min(n, per), 0) : (x.c[c.key] || 0);
+    });
+  });
+
+  const sorter = (a, b, ka, kb) => VOL_SORT.k === 'name' ? a.localeCompare(b) * VOL_SORT.dir
+    : (ka === null) - (kb === null) || (ka - kb) * VOL_SORT.dir || a.localeCompare(b);
+  const sortTh = (k, label, cls) => {
+    const on = VOL_SORT.k === k;
+    return '<th data-vs="' + k + '" tabindex="0" class="' + (cls || '') + (on ? ' sorted' : '') + '" style="cursor:pointer"' +
+      (on ? ' aria-sort="' + (VOL_SORT.dir > 0 ? 'ascending' : 'descending') + '"' : '') + '>' + label +
+      ' <span class="arr">' + (on ? (VOL_SORT.dir > 0 ? '▲' : '▼') : '') + '</span></th>';
+  };
+  const on = (dim, name, t) => M.pick && M.pick.dim === dim && M.pick.val === name && M.pick.type === t;
+  const clickAttr = (dim, val, t) => ' c' + (on(dim, val, t) ? ' on' : '') + '" data-d="' + dim + '" data-n="' + esc(val) + '" data-t="' + esc(t) + '" tabindex="0';
+
+  const dates = list => list ? list.map(r => r.date ? shortDate(r.date) : esc(r.dateText || '?')).join(', ') : '';
+  const branchRow = (b, child) => {
+    return '<tr' + (child ? ' class="child"' : '') + '><td class="l rowname' + (on('branch', b, null) ? ' on' : '') +
+      '" data-d="branch" data-n="' + esc(b) + '" tabindex="0">' + esc(b) + '</td>' +
+      types.map(t => {
+        const v = B[b].v[t] || 0, n = B[b].c[t] || 0, tg = target(t), ds = dates(B[b].d[t]);
+        const click = n ? clickAttr('branch', b, t) : '';
+        const body = n ? ds : '—';
+        if (tg) return '<td class="ps ' + (v >= tg ? 'ps-ontime' : 'ps-late') + click + '" title="' + n + ' held, ' + tg + ' expected">' + body + '</td>';
+        return n ? '<td class="ps' + click + '" title="' + n + ' held">' + body + '</td>' : '<td class="ps zero">—</td>';
+      }).join('') + '</tr>';
+  };
+  const groupRow = (label, bs, cls, attrs, dim, val) => {
+    return '<tr class="' + cls + '"' + (attrs || '') + '><td class="l">' + label + '</td>' +
+      types.map(t => {
+        const tg = target(t), d = bs.filter(b => tg ? (B[b].v[t] || 0) >= tg : B[b].c[t]).length;
+        const click = dim && bs.some(b => B[b].c[t]) ? clickAttr(dim, val, t) : '';
+        return '<td class="ps ' + (tg ? (d === bs.length ? 'ps-ontime' : 'ps-late') : '') + click + '" title="' + d + ' of ' + bs.length + ' branches ' +
+          (tg ? 'reached the expected count' : 'held it') + '">' + d + '/' + bs.length + '</td>';
+      }).join('') + '</tr>';
+  };
+
+  let h = '<thead><tr>' + sortTh('name', isC ? 'Cluster / branch' : 'Branch', 'l') +
+    COLS.map(c => '<th class="pc">' + esc(c.key) + '<span class="sub">' +
+      (c.tg ? 'expected ' + c.tg + (nm > 1 ? ' (' + (c.slots > 1 ? 1 : c.perM) + '/month)' : '') : '') + '</span></th>').join('') +
+    '</tr></thead><tbody>';
+  const tools = document.getElementById('volTools');
+  tools.innerHTML = '';
+  if (!names.size) {
+    document.getElementById('volSum').innerHTML = h + '<tr><td class="msg" colspan="' + (types.length + 1) + '">No branches for this selection.</td></tr></tbody>';
+    return;
+  }
+  const bSort = bs => bs.slice().sort((a, b) => sorter(a, b, 0, 0));
+
+  if (isC) {
+    const g = {};
+    names.forEach(b => { const c = clusterOf(b); (g[c] = g[c] || []).push(b); });
+    Object.keys(g).sort((a, b) => sorter(a, b, 0, 0)).forEach(c => {
+      const bs = g[c], open = VOL_OPEN.has(c);
+      h += groupRow('<span class="tog">' + (open ? '▼' : '▶') + '</span>' + esc(c) +
+        '<span class="sub">' + bs.length + ' branch' + (bs.length === 1 ? '' : 'es') + '</span>', bs, 'grp',
+        ' data-c="' + esc(c) + '" tabindex="0" aria-expanded="' + open + '"', 'cluster', c);
+      if (open) bSort(bs).forEach(b => { h += branchRow(b, true); });
+    });
+    if (Object.keys(g).length > 1) h += groupRow('All clusters', [...names], 'tot');
+    tools.innerHTML = '<button type="button" class="linkbtn inl" data-a="open">Expand all</button>' +
+                      '<button type="button" class="linkbtn inl" data-a="close">Collapse all</button>';
+    tools.querySelectorAll('button').forEach(btn => btn.onclick = () => {
+      if (btn.dataset.a === 'open') Object.keys(g).forEach(c => VOL_OPEN.add(c)); else VOL_OPEN.clear();
+      drawVolSummary();
+    });
+  } else {
+    bSort([...names]).forEach(b => { h += branchRow(b, false); });
+    if (names.size > 1) h += groupRow('All branches', [...names], 'tot');
+  }
+  const el = document.getElementById('volSum');
+  el.innerHTML = h + '</tbody>';
+  el.querySelectorAll('th[data-vs]').forEach(th => {
+    const go = () => { const k = th.dataset.vs; if (VOL_SORT.k === k) VOL_SORT.dir *= -1; else { VOL_SORT.k = k; VOL_SORT.dir = 1; } drawVolSummary(); };
+    th.onclick = go;
+    th.onkeydown = e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); go(); } };
+  });
+  el.querySelectorAll('tr.grp').forEach(tr => {
+    const go = e => {
+      if (e.target.closest('td.c')) return;
+      const c = tr.dataset.c; VOL_OPEN.has(c) ? VOL_OPEN.delete(c) : VOL_OPEN.add(c); drawVolSummary();
+    };
+    tr.onclick = go;
+    tr.onkeydown = e => { if ((e.key === 'Enter' || e.key === ' ') && e.target === tr) { e.preventDefault(); go(e); } };
+  });
+  el.querySelectorAll('td[data-n]').forEach(td => {
+    const go = e => {
+      e.stopPropagation();
+      const p = { dim: td.dataset.d, val: td.dataset.n, type: td.dataset.t || null };
+      M.pick = (M.pick && M.pick.dim === p.dim && M.pick.val === p.val && M.pick.type === p.type) ? null : p;
+      drawVolSummary(); drawActTable();
+    };
+    td.onclick = go;
+    td.onkeydown = e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); go(e); } };
+  });
+}
+
+function periodText() {
+  return fMonth.val ? monthLabel(fMonth.val) : [fActQ.val, fActFy.val].filter(Boolean).join(' ');
+}
+
+const ACT_COLS = [
+  { k: 'date', t: 'Date', l: true, nw: true },
+  { k: 'cluster', t: 'Cluster', l: true },
+  { k: 'branch', t: 'Branch', l: true },
+  { k: 'type', t: 'Session type', l: true },
+  { k: 'intended', t: 'Intended partners attended' },
+  { k: 'invited', t: 'To be invited' },
+  { k: 'attendees', t: 'Total attended' },
+  { k: 'ipct', t: 'Intended %', tip: 'Intended partners attended ÷ to be invited' },
+  { k: 'sheet', t: 'Attendance sheet' },
+  { k: 'pic', t: 'Picture' },
+  { k: 'agenda', t: 'Agenda', l: true }
+];
+const numCell = v => v ? '<td>' + fmtInt(v) + '</td>' : '<td class="na">—</td>';
+const intendedPct = r => { const i = numOf(r.intended); return i === null || !r.invited ? null : i / r.invited * 100; };
+function actSortVal(r, k) {
+  if (k === 'ipct') { const p = intendedPct(r); return p === null ? -1 : p; }
+  if (k === 'intended') { const i = numOf(r.intended); return i === null ? -1 : i; }
+  if (k === 'sheet') return uploaded(r.sheet, r.sheetUrl) ? 1 : 0;
+  if (k === 'pic') return uploaded(r.pic, r.picUrl) ? 1 : 0;
+  if (k === 'date') return r.date || '';
+  if (k === 'type') return typeOf(r);
+  return r[k];
+}
+function statusCell(text, url) {
+  if (!url && isUrl(text)) url = String(text).trim();
+  if (!uploaded(text, url)) return '<td><span class="st no">✗ Missing</span></td>';
+  if (url && isUrl(url)) return '<td><a class="st ok" href="' + esc(url) + '" target="_blank" rel="noopener">✓ View</a></td>';
+  return '<td><span class="st ok" title="' + esc(text) + '">✓ Yes</span></td>';
+}
+
+function drawActTable() {
+  const q = M.q;
+  const rows = M.rows
+    .filter(r => (M.view === 'sched') === isSched(r))
+    .filter(pickMatch)
+    .filter(r => !q || [r.branch, r.cluster, r.type, r.agenda, r.dateText].join(' ').toLowerCase().includes(q))
+    .sort((a, b) => {
+      const cmp = k => { const x = actSortVal(a, k), y = actSortVal(b, k); return typeof x === 'string' ? String(x).localeCompare(String(y)) : x - y; };
+      return cmp(M.sortK) * M.sortDir ||
+        (M.sortK !== 'date' ? -cmp('date') : 0) ||
+        (M.sortK !== 'branch' ? cmp('branch') : 0);
+    });
+
+  document.getElementById('mStats').innerHTML = '<span><b>' + rows.length + '</b> session' + (rows.length === 1 ? '' : 's') + '</span>';
+  const chip = document.getElementById('mChip');
+  chip.innerHTML = M.pick ? '<button type="button" class="chip" title="Clear this filter">' +
+    esc(M.pick.val + (M.pick.type ? ', ' + M.pick.type : '')) + ' ✕</button>' : '';
+  if (M.pick) chip.querySelector('button').onclick = () => { M.pick = null; drawVolSummary(); drawActTable(); };
+
+  let h = '<thead><tr>' + ACT_COLS.map(c => {
+    const s = M.sortK === c.k;
+    return '<th data-k="' + c.k + '" tabindex="0" class="' + (c.l ? 'l ' : '') + (c.nw ? 'nw ' : '') + (s ? 'sorted' : '') + '"' +
+      (c.tip ? ' title="' + c.tip + '"' : '') + (s ? ' aria-sort="' + (M.sortDir > 0 ? 'ascending' : 'descending') + '"' : '') + '>' +
+      c.t + ' <span class="arr">' + (s ? (M.sortDir > 0 ? '▲' : '▼') : '') + '</span></th>';
+  }).join('') + '</tr></thead><tbody>';
+  if (!rows.length) h += '<tr><td class="msg" colspan="' + ACT_COLS.length + '">No sessions match this selection.</td></tr>';
+  rows.forEach(r => {
+    const p = intendedPct(r), iv = numOf(r.intended);
+    h += '<tr>' +
+      '<td class="l nw">' + fmtDate(r) + '</td>' +
+      '<td class="l">' + esc(r.cluster || '—') + '</td>' +
+      '<td class="l">' + esc(r.branch || '—') + '</td>' +
+      '<td class="l">' + esc(typeOf(r)) + '</td>' +
+      numCell(iv) + numCell(r.invited) + numCell(r.attendees) +
+      (p === null ? '<td class="na">—</td>' : '<td class="att ' + attCls(p) + '">' + fmt1(p) + '%</td>') +
+      statusCell(r.sheet, r.sheetUrl) + statusCell(r.pic, r.picUrl) +
+      '<td class="agenda" title="' + esc(r.agenda) + '">' + esc(r.agenda || '—') + '</td></tr>';
+  });
+  const tbl = document.getElementById('mTbl');
+  tbl.innerHTML = h + '</tbody>';
+  tbl.querySelectorAll('th[data-k]').forEach(th => {
+    const go = () => {
+      const k = th.dataset.k;
+      if (M.sortK === k) M.sortDir *= -1;
+      else { M.sortK = k; M.sortDir = ['cluster', 'branch', 'type', 'agenda'].includes(k) ? 1 : -1; }
+      drawActTable();
+    };
+    th.onclick = go;
+    th.onkeydown = e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); go(); } };
+  });
+}
+
+/* =====================================================================
+   PLAN VS ACTUAL  (Activity sheet = sessions every branch has to do)
+   ===================================================================== */
+const RULE = { EARLY_DAYS: 3, ON_TIME_DAYS: 7, LATE_MAX_DAYS: 30 };
+
+let PLAN = null, PLAN_ERR = '', MATCH = { byBranch: {}, sess: new Map() };
+const normT = v => String(v || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+const dnum = iso => Date.UTC(+iso.slice(0, 4), +iso.slice(5, 7) - 1, +iso.slice(8, 10)) / 864e5;
+const TODAY = (() => { const d = new Date(); return Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()) / 864e5; })();
+const shortDate = iso => +iso.slice(8, 10) + ' ' + MON[+iso.slice(5, 7) - 1];
+function typeScore(sn, pn) {
+  if (!sn || !pn) return 0;
+  if (sn === pn) return 2;
+  if (!/\d$/.test(sn) && pn.startsWith(sn)) return 1;
+  if (!/\d$/.test(pn) && sn.startsWith(pn)) return 1;
+  return 0;
+}
+const inPeriod = r => (!fActFy.val || fyOf(r) === fActFy.val) && (!fActQ.val || qOf(r) === fActQ.val) && (!fMonth.val || monthKey(r) === fMonth.val);
+
+const branchCluster = () => {
+  const m = {};
+  mapRows().forEach(r => { if (r.branch && !m[r.branch] && r.cluster) m[r.branch] = r.cluster; });
+  mapRows().forEach(r => { if (r.branch && !(r.branch in m)) m[r.branch] = ''; });
+  return m;
+};
+const scopeBranches = () => {
+  const bc = branchCluster();
+  return Object.keys(bc).filter(b => (!fCluster.val || bc[b] === fCluster.val) && (!fBranch.val || b === fBranch.val)).sort();
+};
+
+function matchAll() {
+  const out = { byBranch: {}, sess: new Map() };
+  if (!PLAN || !ACT || PLAN_ERR) return out;
+  const byB = {};
+  ACT.forEach(r => { if (r.branch && r.date && isSched(r)) (byB[r.branch] = byB[r.branch] || []).push(r); });
+  Object.keys(branchCluster()).forEach(b => {
+    const sessions = byB[b] || [], used = new Set();
+    const res = PLAN.map(p => ({ p: p, st: null, sess: null, delay: null }));
+    [[false, 2], [false, 1], [true, 2], [true, 1]].forEach(([late, want]) => {
+      PLAN.forEach((p, i) => {
+        if (res[i].sess) return;
+        const pd = dnum(p.date);
+        const next = PLAN.slice(i + 1).find(q => q.n === p.n);
+        const end = Math.min(next ? dnum(next.date) - RULE.EARLY_DAYS - 1 : Infinity, pd + RULE.LATE_MAX_DAYS);
+        const lo = late ? pd + RULE.ON_TIME_DAYS + 1 : pd - RULE.EARLY_DAYS;
+        const hi = late ? end : Math.min(end, pd + RULE.ON_TIME_DAYS);
+        let best = null;
+        sessions.forEach(s => {
+          if (used.has(s) || typeScore(normT(s.type), p.n) !== want) return;
+          const d = dnum(s.date);
+          if (d < lo || d > hi) return;
+          if (!best || Math.abs(d - pd) < Math.abs(dnum(best.date) - pd)) best = s;
+        });
+        if (best) {
+          used.add(best);
+          const delay = dnum(best.date) - pd;
+          Object.assign(res[i], { st: late ? 'late' : 'ontime', sess: best, delay: delay });
+          out.sess.set(best, { p: p, st: res[i].st, delay: delay });
+        }
+      });
+    });
+    res.forEach(c => { if (!c.st) c.st = 'missed'; });
+    out.byBranch[b] = res;
+  });
+  return out;
+}
+
+function statsOf(cells) {
+  const done = cells.filter(c => c.st !== 'missed').length;
+  return { due: cells.length, done: done, comp: cells.length ? done / cells.length * 100 : null };
+}
+
+const PLAN_OPEN = new Set();
+const PLAN_SORT = { k: 'comp', dir: 1 };
+const compTd = p => {
+  if (p === null) return '<td class="na">—</td>';
+  const c = attCls(p), col = c === 'hi' ? '#0f6b5c' : c === 'mid' ? '#a06d0c' : '#b3402f';
+  return '<td class="comp"><span class="cbar"><i style="width:' + Math.round(p) + '%;background:' + col + '"></i></span>' +
+         '<span class="att ' + c + '">' + Math.round(p) + '%</span></td>';
+};
+
+function drawPlan() {
+  const tbl = document.getElementById('planTbl'), tools = document.getElementById('planTools');
+  document.getElementById('planPeriod').textContent = (fMonth.val || fActFy.val || fActQ.val) ? periodText() : '';
+  tools.innerHTML = '';
+  if (PLAN_ERR) { tbl.innerHTML = '<tr><td class="msg err">' + esc(PLAN_ERR) + '</td></tr>'; return; }
+  if (!PLAN) { tbl.innerHTML = '<tr><td class="msg">Loading the plan…</td></tr>'; return; }
+  const items = PLAN.filter(p => inPeriod(p) && dnum(p.date) <= TODAY);
+  if (!items.length) { tbl.innerHTML = '<tr><td class="msg">No planned sessions due in this period.</td></tr>'; return; }
+  const idx = items.map(p => PLAN.indexOf(p));
+  const branches = scopeBranches(), bc = branchCluster(), isC = sumDim() === 'cluster';
+  const cellsOf = b => idx.map(i => MATCH.byBranch[b][i]);
+  const bStat = {}; branches.forEach(b => { bStat[b] = statsOf(cellsOf(b)); });
+  const byComp = (a, b, ka, kb) => PLAN_SORT.k === 'name'
+    ? a.localeCompare(b) * PLAN_SORT.dir
+    : (ka === null) - (kb === null) || (ka - kb) * PLAN_SORT.dir || a.localeCompare(b);
+  const sortTh = (k, label, cls) => {
+    const on = PLAN_SORT.k === k;
+    return '<th data-ps="' + k + '" tabindex="0" class="' + (cls || '') + (on ? ' sorted' : '') + '" style="cursor:pointer"' +
+      (on ? ' aria-sort="' + (PLAN_SORT.dir > 0 ? 'ascending' : 'descending') + '"' : '') + '>' + label +
+      ' <span class="arr">' + (on ? (PLAN_SORT.dir > 0 ? '▲' : '▼') : '') + '</span></th>';
+  };
+
+  const branchRow = (b, child) => {
+    const st = bStat[b];
+    const tds = cellsOf(b).map(c => c.st === 'missed'
+      ? '<td class="ps ps-missed" title="Not held">✗</td>'
+      : '<td class="ps ps-ontime" title="Held ' + esc(fmtDate(c.sess)) + '">✓</td>').join('');
+    return '<tr' + (child ? ' class="child"' : '') + '><td class="l">' + esc(b) + '</td>' + tds +
+      '<td>' + st.done + '/' + st.due + '</td>' + compTd(st.comp) + '</tr>';
+  };
+  const groupRow = (label, bs, cls, extra) => {
+    const st = statsOf([].concat(...bs.map(cellsOf)));
+    const tds = idx.map((i, j) => {
+      const done = bs.filter(b => MATCH.byBranch[b][i].st !== 'missed').length, r = done / bs.length * 100;
+      return '<td class="ps ' + (r >= 80 ? 'ps-ontime' : r >= 50 ? 'ps-late' : 'ps-missed') + '" title="' + done + ' of ' + bs.length +
+             ' branches held ' + esc(items[j].activity) + '">' + done + '/' + bs.length + '</td>';
+    }).join('');
+    return '<tr class="' + cls + '"' + (extra || '') + '><td class="l">' + label + '</td>' + tds +
+      '<td>' + st.done + '/' + st.due + '</td>' + compTd(st.comp) + '</tr>';
+  };
+
+  let h = '<thead><tr>' + sortTh('name', isC ? 'Cluster / branch' : 'Branch', 'l') +
+    items.map(p => '<th class="pc">' + esc(p.activity) + '<span class="sub">' + shortDate(p.date) + '</span></th>').join('') +
+    '<th>Done<span class="sub">of planned</span></th>' + sortTh('comp', 'Compliance') + '</tr></thead><tbody>';
+  if (!branches.length) {
+    tbl.innerHTML = h + '<tr><td class="msg" colspan="' + (items.length + 3) + '">No branches for this selection.</td></tr></tbody>';
+    return;
+  }
+
+  if (isC) {
+    const g = {};
+    branches.forEach(b => { const c = bc[b] || '—'; (g[c] = g[c] || []).push(b); });
+    const cs = Object.keys(g).map(c => ({ c: c, k: statsOf([].concat(...g[c].map(cellsOf))).comp }))
+      .sort((x, y) => byComp(x.c, y.c, x.k, y.k));
+    cs.forEach(({ c }) => {
+      const open = PLAN_OPEN.has(c), bs = g[c];
+      h += groupRow('<span class="tog">' + (open ? '▼' : '▶') + '</span>' + esc(c) +
+        '<span class="sub">' + bs.length + ' branch' + (bs.length === 1 ? '' : 'es') + '</span>', bs, 'grp',
+        ' data-c="' + esc(c) + '" tabindex="0" aria-expanded="' + open + '"');
+      if (open) bs.slice().sort((a, b) => byComp(a, b, bStat[a].comp, bStat[b].comp)).forEach(b => { h += branchRow(b, true); });
+    });
+    if (cs.length > 1) h += groupRow('All clusters', branches, 'tot');
+    tools.innerHTML = '<button type="button" class="linkbtn inl" data-a="open">Expand all</button>' +
+                      '<button type="button" class="linkbtn inl" data-a="close">Collapse all</button>';
+    tools.querySelectorAll('button').forEach(btn => btn.onclick = () => {
+      if (btn.dataset.a === 'open') Object.keys(g).forEach(c => PLAN_OPEN.add(c)); else PLAN_OPEN.clear();
+      drawPlan();
+    });
+  } else {
+    branches.slice().sort((a, b) => byComp(a, b, bStat[a].comp, bStat[b].comp)).forEach(b => { h += branchRow(b, false); });
+    if (branches.length > 1) {
+      const st = statsOf([].concat(...branches.map(cellsOf)));
+      h += '<tr class="tot"><td class="l">All branches</td>' +
+        idx.map(i => { const d = branches.filter(b => MATCH.byBranch[b][i].st !== 'missed').length; return '<td class="ps">' + d + '/' + branches.length + '</td>'; }).join('') +
+        '<td>' + st.done + '/' + st.due + '</td>' + compTd(st.comp) + '</tr>';
+    }
+  }
+  tbl.innerHTML = h + '</tbody>';
+  tbl.querySelectorAll('th[data-ps]').forEach(th => {
+    const go = () => {
+      const k = th.dataset.ps;
+      if (PLAN_SORT.k === k) PLAN_SORT.dir *= -1; else { PLAN_SORT.k = k; PLAN_SORT.dir = 1; }
+      drawPlan();
+    };
+    th.onclick = go;
+    th.onkeydown = e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); go(); } };
+  });
+  tbl.querySelectorAll('tr.grp').forEach(tr => {
+    const go = () => { const c = tr.dataset.c; PLAN_OPEN.has(c) ? PLAN_OPEN.delete(c) : PLAN_OPEN.add(c); drawPlan(); };
+    tr.onclick = go;
+    tr.onkeydown = e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); go(); } };
+  });
+}
+
+/* =====================================================================
+   LOG A SESSION  (form → compress in browser → upload file by file → save row)
+   ===================================================================== */
+const UP = { kind: 'vol', att: [], pic: [], busy: false };
+const ATT_MIME = ['image/jpeg', 'image/png', 'image/webp', 'application/pdf', 'text/csv', 'application/vnd.ms-excel',
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'];
+const $ = id => document.getElementById(id);
+const dlg = $('logDlg');
+const lim = k => ME ? ({ maxAtt: ME.maxAtt || 3, maxPic: ME.maxPic || 6, mb: ME.maxFileMb || 10, back: ME.maxBackdateDays || 45, ev: ME.requireEvidence !== false })[k] : null;
+const isoLocal = d => d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+const fmtSize = b => b >= 1048576 ? (b / 1048576).toFixed(1) + ' MB' : Math.max(1, Math.round(b / 1024)) + ' KB';
+function note(msg, isErr) { const n = $('logNote'); n.textContent = msg || ''; n.className = 'note' + (isErr ? ' err' : ''); }
+
+/* Branches this person may log for (all for admins) */
+function myBranches() {
+  if (!ME) return [];
+  const seen = new Set(), list = [];
+  mapRows().forEach(r => { if (r.branch && !seen.has(r.branch)) { seen.add(r.branch); list.push(r); } });
+  if (ME.role === 'admin' || (ME.branches || []).includes('*')) return list;
+  const mine = new Set((ME.branches || []).map(keyB));
+  return list.filter(r => mine.has(keyB(r.branch)));
+}
+function fillBranches() {
+  const sel = $('fBr'), cur = sel.value || fBranch.val, list = myBranches(), g = {};
+  list.forEach(r => { const c = r.cluster || 'Other'; (g[c] = g[c] || []).push(r.branch); });
+  sel.innerHTML = (list.length > 1 ? '<option value="">Choose branch</option>' : '') +
+    Object.keys(g).sort().map(c => '<optgroup label="' + esc(c) + '">' +
+      g[c].sort().map(b => '<option' + (b === cur ? ' selected' : '') + '>' + esc(b) + '</option>').join('') + '</optgroup>').join('');
+}
+const typeList = () => UP.kind === 'vol' ? VOL_T.map(v => v.activity) : [...new Set((PLAN || []).map(p => p.activity))];
+function fillTypes() {
+  const sel = $('fType'), cur = sel.value, list = typeList();
+  sel.innerHTML = '<option value="">' + (list.length ? 'Choose session type' : 'No session types in the Activity sheet') + '</option>' +
+    list.map(t => '<option' + (t === cur ? ' selected' : '') + '>' + esc(t) + '</option>').join('');
+  typeHint();
+}
+/* "1 already logged for Indiranagar in Nov 2026, expected 2/month" */
+function typeHint() {
+  const h = $('fTypeHint'), t = $('fType').value, b = $('fBr').value, d = $('fDate').value;
+  h.textContent = ''; h.className = 'hintsm';
+  if (!t || !b || !d || !ACT) return;
+  const mk = d.slice(0, 7), nt = normT(t);
+  const same = r => r.branch === b && (UP.kind === 'vol' ? !isSched(r) && volType(r) === t : isSched(r) && typeScore(normT(r.type), nt) > 0);
+  const n = ACT.filter(r => same(r) && monthKey(r) === mk).length;
+  let s = (n ? n + ' already logged' : 'None logged yet') + ' for ' + b + ' in ' + monthLabel(mk);
+  if (UP.kind === 'vol') { const v = VOL_T.find(x => x.activity === t); if (v && v.freq) s += ', expected ' + v.freq + '/month'; }
+  if (ACT.some(r => same(r) && r.date === d)) { s += '. One is already logged on this date.'; h.className = 'hintsm warn'; }
+  h.textContent = s + (s.endsWith('.') ? '' : '.');
+}
+
+function openLog() {
+  if (!ME || !ME.canUpload) return;
+  fillBranches(); fillTypes();
+  const d = $('fDate'), today = new Date();
+  d.max = isoLocal(today);
+  d.min = ME.role === 'admin' ? '' : isoLocal(new Date(today.getTime() - lim('back') * 864e5));
+  if (!d.value) d.value = isoLocal(today);
+  $('attLab').textContent = 'Attendance sheet: photo, PDF or Excel (up to ' + lim('maxAtt') + ')';
+  $('picLab').textContent = 'Session photos (up to ' + lim('maxPic') + ')';
+  typeHint(); note('');
+  dlg.showModal();
+}
+$('logBtn').onclick = openLog;
+const closeLog = () => { if (!UP.busy) dlg.close(); };
+$('logX').onclick = closeLog;
+$('logCancel').onclick = closeLog;
+dlg.addEventListener('cancel', e => { if (UP.busy) e.preventDefault(); });
+document.querySelectorAll('#logKind button').forEach(b => b.onclick = () => {
+  if (UP.busy) return;
+  UP.kind = b.dataset.k;
+  document.querySelectorAll('#logKind button').forEach(x => x.setAttribute('aria-pressed', x === b));
+  fillTypes();
+});
+['fDate', 'fBr', 'fType'].forEach(id => $(id).addEventListener('change', typeHint));
+['fDate', 'fBr', 'fType', 'fInv', 'fTot', 'fInt', 'fAgenda'].forEach(id => $(id).addEventListener('input', () => $(id).classList.remove('bad')));
+
+/* ---------- Files ---------- */
+function compressImage(file, maxPx, q) {
+  return new Promise((res, rej) => {
+    const url = URL.createObjectURL(file), img = new Image();
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      const s = Math.min(1, maxPx / Math.max(img.naturalWidth, img.naturalHeight));
+      const w = Math.round(img.naturalWidth * s), h = Math.round(img.naturalHeight * s);
+      const c = document.createElement('canvas'); c.width = w; c.height = h;
+      const x = c.getContext('2d');
+      x.fillStyle = '#fff'; x.fillRect(0, 0, w, h); x.drawImage(img, 0, 0, w, h);
+      c.toBlob(b => {
+        if (!b) return rej(new Error('could not process this image.'));
+        res(file.type === 'image/jpeg' && file.size <= b.size ? file : b);
+      }, 'image/jpeg', q);
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); rej(new Error('this image format is not supported. Use JPG or PNG.')); };
+    img.src = url;
+  });
+}
+const mimeFromName = n => ({ pdf: 'application/pdf', csv: 'text/csv', xls: 'application/vnd.ms-excel',
+  xlsx: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })[(n.split('.').pop() || '').toLowerCase()] || '';
+async function prepFile(f, kind) {
+  const type = (f.type || '').toLowerCase();
+  if (type.startsWith('image/') || /\.(jpe?g|png|webp|heic|heif)$/i.test(f.name)) {
+    const att = kind === 'att';
+    const blob = await compressImage(f, att ? CONFIG.ATT_MAX_PX : CONFIG.PIC_MAX_PX, att ? CONFIG.ATT_QUALITY : CONFIG.PIC_QUALITY);
+    if (blob.size > lim('mb') * 1048576) throw new Error('larger than ' + lim('mb') + ' MB after compression.');
+    return { blob: blob, mime: 'image/jpeg', thumb: URL.createObjectURL(blob) };
+  }
+  if (kind === 'pic') throw new Error('only photos can be added here.');
+  const mime = ATT_MIME.includes(type) ? type : mimeFromName(f.name);
+  if (!ATT_MIME.includes(mime)) throw new Error('use a photo, PDF or Excel file.');
+  if (f.size > lim('mb') * 1048576) throw new Error('larger than ' + lim('mb') + ' MB.');
+  return { blob: f, mime: mime };
+}
+async function addFiles(kind, files) {
+  const list = UP[kind], max = kind === 'att' ? lim('maxAtt') : lim('maxPic');
+  for (const f of files) {
+    if (list.length >= max) { note('You can add up to ' + max + (kind === 'att' ? ' attendance files.' : ' photos.'), true); break; }
+    const it = { id: Math.random().toString(36).slice(2), name: f.name, size0: f.size, status: 'Compressing…', blob: null };
+    list.push(it); drawFiles(kind);
+    try { Object.assign(it, await prepFile(f, kind), { status: '' }); }
+    catch (e) { const i = list.indexOf(it); if (i >= 0) list.splice(i, 1); note(f.name + ': ' + e.message, true); }
+    drawFiles(kind);
+  }
+}
+function drawFiles(kind) {
+  const ul = $(kind + 'List');
+  ul.innerHTML = UP[kind].map(it => {
+    const ext = (it.name.split('.').pop() || '').slice(0, 4).toUpperCase();
+    const size = it.blob ? (it.blob.size < it.size0 ? fmtSize(it.size0) + ' → ' : '') + fmtSize(it.blob.size) : '';
+    return '<li>' + (it.thumb ? '<img src="' + it.thumb + '" alt="">' : '<span class="ic">' + esc(ext) + '</span>') +
+      '<span class="fn" title="' + esc(it.name) + '">' + esc(it.name) + '</span>' +
+      '<span class="sz">' + size + '</span>' +
+      '<span class="stt' + (it.status === 'Uploaded' ? ' done' : '') + '">' + esc(it.status || '') + '</span>' +
+      (UP.busy ? '' : '<button type="button" class="x" data-id="' + it.id + '" aria-label="Remove ' + esc(it.name) + '">✕</button>') + '</li>';
+  }).join('');
+  ul.querySelectorAll('button[data-id]').forEach(b => b.onclick = () => {
+    const i = UP[kind].findIndex(x => x.id === b.dataset.id);
+    if (i < 0) return;
+    if (UP[kind][i].thumb) URL.revokeObjectURL(UP[kind][i].thumb);
+    UP[kind].splice(i, 1); drawFiles(kind); note('');
+  });
+}
+['att', 'pic'].forEach(k => {
+  const drop = $(k + 'Drop'), inp = $(k + 'In');
+  drop.onclick = () => { if (!UP.busy) inp.click(); };
+  drop.onkeydown = e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); drop.click(); } };
+  inp.onchange = () => { addFiles(k, [...inp.files]); inp.value = ''; };
+  drop.ondragover = e => { e.preventDefault(); drop.classList.add('over'); };
+  drop.ondragleave = () => drop.classList.remove('over');
+  drop.ondrop = e => { e.preventDefault(); drop.classList.remove('over'); if (!UP.busy) addFiles(k, [...e.dataTransfer.files]); };
+});
+const toB64 = blob => new Promise((res, rej) => {
+  const r = new FileReader();
+  r.onload = () => res(String(r.result).split(',')[1]);
+  r.onerror = () => rej(new Error('Could not read ' + (blob.name || 'a file') + '.'));
+  r.readAsDataURL(blob);
+});
+
+/* ---------- Validate + save ---------- */
+function readForm() {
+  const v = id => $(id).value.trim();
+  return { kind: UP.kind, date: v('fDate'), branch: v('fBr'), type: v('fType'),
+           invited: v('fInv'), total: v('fTot'), intended: v('fInt'), agenda: v('fAgenda') };
+}
+function checkForm(f) {
+  const bad = (id, msg) => { $(id).classList.add('bad'); $(id).focus(); return msg; };
+  const n = s => /^\d+$/.test(s) ? +s : NaN;
+  if (!f.date) return bad('fDate', 'Choose the session date.');
+  if (f.date > $('fDate').max) return bad('fDate', 'The session date cannot be in the future.');
+  if ($('fDate').min && f.date < $('fDate').min) return bad('fDate', 'Sessions older than ' + lim('back') + ' days must be logged by an admin.');
+  if (!f.branch) return bad('fBr', 'Choose the branch.');
+  if (!f.type) return bad('fType', 'Choose the session type.');
+  const inv = n(f.invited), tot = n(f.total), int = n(f.intended);
+  if (!(inv >= 1)) return bad('fInv', 'Enter how many were invited (at least 1).');
+  if (!(tot >= 1)) return bad('fTot', 'Enter how many attended (at least 1).');
+  if (!(int >= 0)) return bad('fInt', 'Enter how many intended partners attended (0 or more).');
+  if (int > tot) return bad('fInt', 'Intended partners attended cannot be more than total attended.');
+  if (int > inv) return bad('fInt', 'Intended partners attended cannot be more than the number invited.');
+  if (f.agenda.length < 5) return bad('fAgenda', 'Add a short agenda.');
+  if ([...UP.att, ...UP.pic].some(x => !x.blob)) return 'Wait for the files to finish processing.';
+  if (lim('ev') && !UP.att.length) return 'Add the attendance sheet.';
+  if (lim('ev') && !UP.pic.length) return 'Add at least one session photo.';
+  return '';
+}
+function setBusy(b) {
+  UP.busy = b;
+  ['logSave', 'logCancel', 'logX'].forEach(id => { $(id).disabled = b; });
+  ['fDate', 'fBr', 'fType', 'fInv', 'fTot', 'fInt', 'fAgenda'].forEach(id => { $(id).disabled = b; });
+  ['attDrop', 'picDrop'].forEach(id => $(id).setAttribute('aria-disabled', b));
+  $('logSave').textContent = b ? 'Saving…' : 'Save session';
+  drawFiles('att'); drawFiles('pic');
+}
+function resetLog() {
+  ['fInv', 'fTot', 'fInt', 'fAgenda'].forEach(id => { $(id).value = ''; });
+  $('fDate').value = isoLocal(new Date()); $('fType').value = '';
+  [...UP.att, ...UP.pic].forEach(it => { if (it.thumb) URL.revokeObjectURL(it.thumb); });
+  UP.att = []; UP.pic = []; drawFiles('att'); drawFiles('pic'); note('');
+}
+
+async function saveSession() {
+  if (UP.busy) return;
+  const f = readForm(), err = checkForm(f);
+  if (err) { note(err, true); return; }
+  if (AUTH.exp - Date.now() < 5 * 60e3) {
+    clearToken(); showGate('Your sign-in is about to expire. Sign in again; your entries are kept.', true, true);
+    return;
+  }
+  setBusy(true);
+  let sid = '';
+  try {
+    note('Checking…');
+    let b = await api('begin', { fields: f });
+    if (b.duplicate) {
+      if (!confirm(b.message + '\n\nSave it anyway?')) { note(''); return; }
+      b = await api('begin', { fields: f, force: true });
+    }
+    sid = b.sessionId;
+    const all = UP.att.map((x, i) => ['att', x, i + 1]).concat(UP.pic.map((x, i) => ['pic', x, i + 1]));
+    for (let i = 0; i < all.length; i++) {
+      const [k, it, n] = all[i];
+      note('Uploading file ' + (i + 1) + ' of ' + all.length + '…');
+      it.status = 'Uploading…'; drawFiles(k);
+      await api('upload', { sessionId: sid, kind: k, index: n, name: it.name, mime: it.mime, data: await toB64(it.blob) });
+      it.status = 'Uploaded'; drawFiles(k);
+    }
+    note('Saving…');
+    await api('submit', { sessionId: sid });
+    sid = '';
+    UP.busy = false;
+    resetLog(); dlg.close();
+    toast('Session saved for ' + f.branch + '.');
+    if (M.view !== f.kind) document.querySelector('.tabs .tab[data-v="' + f.kind + '"]').click();
+    loadAll();
+  } catch (e) {
+    if (sid) api('cancel', { sessionId: sid }).catch(() => {});
+    [...UP.att, ...UP.pic].forEach(it => { it.status = ''; });
+    if (!e.auth) note(e.message, true);
+  } finally {
+    setBusy(false);
+  }
+}
+$('logSave').onclick = saveSession;
+
+initAuth();
+</script>
+</body>
+</html>
