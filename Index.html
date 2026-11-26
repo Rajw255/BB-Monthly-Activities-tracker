@@ -28,22 +28,12 @@
   .top h1 { margin:0; }
   .top .grow { flex:1; }
   .upd { font-size:12px; color:var(--muted); }
-  .me { display:flex; align-items:center; gap:4px; font-size:12.5px; color:var(--muted); }
-  .me b { color:var(--ink); font-weight:500; max-width:200px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
   .btn { all:unset; box-sizing:border-box; cursor:pointer; display:inline-flex; align-items:center; gap:6px; background:var(--panel); border:1px solid var(--line); border-radius:6px; padding:6px 12px; font-size:13px; font-weight:500; white-space:nowrap; }
   .btn:hover { border-color:#b9c6c3; }
   .btn.primary { background:var(--b3); border-color:var(--b3); color:#fff; }
   .btn.primary:hover { background:#0c5a4d; }
   .btn[disabled] { opacity:.55; cursor:not-allowed; }
   .btn:focus-visible { outline:2px solid var(--focus); outline-offset:1px; }
-
-  /* ---------- Sign-in ---------- */
-  #gate { max-width:400px; margin:14vh auto 0; background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:28px 24px; text-align:center; }
-  #gate h1 { margin-bottom:6px; }
-  #gate p { color:var(--muted); margin:0 0 20px; }
-  #gBtn { display:flex; justify-content:center; min-height:44px; }
-  #gateMsg { margin-top:14px; font-size:13px; color:var(--muted); }
-  #gateMsg.err { color:var(--down); }
 
   /* ---------- Top control bar ---------- */
   .controls { display:flex; flex-wrap:wrap; gap:8px 10px; align-items:flex-end; background:var(--panel); border:1px solid var(--line); border-radius:8px; padding:8px 10px; }
@@ -203,29 +193,19 @@
   @media (max-width:600px) {
     .dl-body { grid-template-columns:1fr; }
     .nums { grid-template-columns:1fr 1fr 1fr; gap:8px; }
-    .me b { max-width:120px; }
   }
 </style>
 </head>
 <body>
 
-<!-- ================= Sign-in ================= -->
-<div id="gate" hidden>
-  <h1>Monthly activities</h1>
-  <p>Sign in with your work Google account.</p>
-  <div id="gBtn"></div>
-  <div id="gateMsg"></div>
-</div>
-
 <!-- ================= Dashboard ================= -->
-<div class="wrap" id="main" hidden>
+<div class="wrap" id="main">
   <div class="top">
     <h1>Monthly activities</h1>
     <div class="grow"></div>
     <span class="upd" id="upd"></span>
     <button type="button" class="btn" id="refreshBtn">Refresh</button>
-    <button type="button" class="btn primary" id="logBtn" hidden>+ Log a session</button>
-    <span class="me"><b id="meName"></b><button type="button" class="linkbtn inl" id="signOut">Sign out</button></span>
+    <button type="button" class="btn primary" id="logBtn">+ Log a session</button>
   </div>
 
   <div class="controls">
@@ -291,7 +271,7 @@
           <button type="button" data-k="sched" aria-pressed="false">Scheduled</button>
         </div>
       </div>
-      <div class="fld full" id="whoFld" hidden><label for="fWho">Your work email</label><input type="email" id="fWho" autocomplete="email" placeholder="name@company.com"></div>
+      <div class="fld full"><label for="fWho">Your work email</label><input type="email" id="fWho" autocomplete="email" placeholder="name@wealthy.in"></div>
       <div class="fld"><label for="fDate">Date</label><input type="date" id="fDate"></div>
       <div class="fld"><label for="fBr">Branch</label><select id="fBr"></select></div>
       <div class="fld full">
@@ -331,12 +311,10 @@
    ===================================================================== */
 const CONFIG = {
   API_URL: 'https://script.google.com/macros/s/PASTE_DEPLOYMENT_ID/exec',   // Apps Script web app /exec URL
-  CLIENT_ID: 'PASTE_CLIENT_ID.apps.googleusercontent.com',                  // same as OAUTH_CLIENT_ID in Code.gs
-  DOMAIN: 'yourcompany.com',                                                // work email domain (sign-in hint)
+  DOMAIN: 'wealthy.in',                                                     // submitter email must be on this domain
   PIC_MAX_PX: 1600, PIC_QUALITY: 0.72,     // session photos → ~200–400 KB
   ATT_MAX_PX: 2200, ATT_QUALITY: 0.82,     // attendance sheet photos stay readable
-  AUTO_REFRESH_MIN: 5,
-  AUTH_ENABLED: false   // false = no Google sign-in yet (set the same in Code.gs). Turn on later with CLIENT_ID filled in.
+  AUTO_REFRESH_MIN: 5
 };
 
 const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -433,87 +411,23 @@ function refreshBranch() {
 function render() { renderActivities(); }
 
 /* =====================================================================
-   SIGN-IN (Google Identity Services) + API
+   API (Apps Script web app). text/plain avoids the browser's pre-flight check.
    ===================================================================== */
-const AUTH = { token: '', exp: 0 };
-let ME = null;
-const jwtPayload = t => {
-  try { return JSON.parse(decodeURIComponent(escape(atob(t.split('.')[1].replace(/-/g, '+').replace(/_/g, '/'))))); }
-  catch (e) { return {}; }
-};
-function setToken(t) {
-  AUTH.token = t; AUTH.exp = (jwtPayload(t).exp || 0) * 1000;
-  try { sessionStorage.setItem('ma_tok', t); } catch (e) {}
-}
-function clearToken() {
-  AUTH.token = ''; AUTH.exp = 0;
-  try { sessionStorage.removeItem('ma_tok'); } catch (e) {}
-}
-function showGate(msg, isErr, prompt) {
-  const d = document.getElementById('logDlg'); if (d.open) d.close();
-  document.getElementById('main').hidden = true;
-  document.getElementById('gate').hidden = false;
-  const m = document.getElementById('gateMsg');
-  m.textContent = msg || ''; m.className = isErr ? 'err' : '';
-  if (prompt && window.google && google.accounts) { try { google.accounts.id.prompt(); } catch (e) {} }
-}
-function onCredential(resp) {
-  setToken(resp.credential);
-  document.getElementById('gate').hidden = true;
-  document.getElementById('main').hidden = false;
-  loadAll();
-}
-function initAuth() {
-  if (!CONFIG.AUTH_ENABLED) {
-    AUTH.token = 'none'; AUTH.exp = Date.now() + 3650 * 864e5;
-    document.querySelector('.me').hidden = true;
-    $('whoFld').hidden = false;
-    try { $('fWho').value = localStorage.getItem('ma_who') || ''; } catch (e) {}
-    document.getElementById('main').hidden = false;
-    loadAll();
-    return;
-  }
-  const gis = document.createElement('script');
-  gis.src = 'https://accounts.google.com/gsi/client'; gis.async = true;
-  document.head.appendChild(gis);
-  let saved = '';
-  try { saved = sessionStorage.getItem('ma_tok') || ''; } catch (e) {}
-  if (saved && (jwtPayload(saved).exp || 0) * 1000 > Date.now() + 60e3) onCredential({ credential: saved });
-  else showGate();
-  (function waitGis() {
-    if (!(window.google && google.accounts && google.accounts.id)) { setTimeout(waitGis, 150); return; }
-    google.accounts.id.initialize({ client_id: CONFIG.CLIENT_ID, callback: onCredential, auto_select: true, hd: CONFIG.DOMAIN, cancel_on_tap_outside: false });
-    google.accounts.id.renderButton(document.getElementById('gBtn'), { theme: 'outline', size: 'large', text: 'signin_with', shape: 'rectangular', width: 260 });
-    if (!AUTH.token) google.accounts.id.prompt();
-  })();
-}
-document.getElementById('signOut').onclick = () => {
-  try { google.accounts.id.disableAutoSelect(); } catch (e) {}
-  clearToken(); ME = null;
-  showGate('You are signed out.');
-};
-
-/* All calls go to the Apps Script web app. text/plain avoids the browser's pre-flight check. */
+let LIM = null;   // upload limits sent by the server
 async function api(action, body) {
-  if (CONFIG.AUTH_ENABLED && (!AUTH.token || AUTH.exp < Date.now() + 30e3)) {
-    clearToken(); showGate('Your sign-in has expired. Sign in again to continue.', true, true);
-    const e = new Error('Sign-in expired.'); e.auth = true; throw e;
-  }
+  if (/PASTE_DEPLOYMENT_ID/.test(CONFIG.API_URL)) throw new Error('Set CONFIG.API_URL in index.html to your Apps Script /exec URL.');
   let res;
   try {
     res = await fetch(CONFIG.API_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-      body: JSON.stringify(Object.assign({ action: action, token: AUTH.token }, body || {}))
+      body: JSON.stringify(Object.assign({ action: action }, body || {}))
     });
-  } catch (e) { throw new Error('Could not reach the server. Check your internet connection.'); }
+  } catch (e) { throw new Error('Could not reach the server. Check your internet connection and the API_URL in index.html.'); }
   let j;
-  try { j = await res.json(); } catch (e) { throw new Error('The server sent an unexpected reply (' + res.status + ').'); }
-  if (!j.ok) {
-    const e = new Error(j.error || 'The request failed.'); e.auth = !!j.auth;
-    if (e.auth) { clearToken(); showGate(j.error, true, false); }
-    throw e;
-  }
+  try { j = await res.json(); }
+  catch (e) { throw new Error('The server sent an unexpected reply (' + res.status + '). Check that the web app is deployed with access "Anyone".'); }
+  if (!j.ok) throw new Error(j.error || 'The request failed.');
   return j.data;
 }
 
@@ -534,10 +448,7 @@ async function loadAll() {
   btn.disabled = true; btn.textContent = 'Refreshing…';
   try {
     const d = await api('bootstrap');
-    ME = d.me;
-    const nm = document.getElementById('meName');
-    nm.textContent = ME.name || ME.email; nm.title = ME.email + ' (' + ME.role + ')';
-    document.getElementById('logBtn').hidden = !ME.canUpload;
+    LIM = d.limits || null;
 
     MAP = d.mapping || []; MAP_ERR = d.mapErr || '';
     if (d.actErr) { ACT_ERR = d.actErr; ACT = null; } else { ACT_ERR = ''; ACT = d.activities || []; }
@@ -551,7 +462,7 @@ async function loadAll() {
     refreshCluster(); refreshBranch(); render();
     document.getElementById('upd').textContent = 'Updated ' + new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
   } catch (e) {
-    if (!e.auth) { if (ACT) toast(e.message); else { ACT_ERR = e.message; render(); } }
+    if (ACT) toast(e.message); else { ACT_ERR = e.message; render(); }
   } finally {
     LOADING = false; btn.disabled = false; btn.textContent = 'Refresh';
   }
@@ -565,7 +476,7 @@ function setPlan(data) {
 }
 document.getElementById('refreshBtn').onclick = loadAll;
 setInterval(() => {
-  if (!document.hidden && AUTH.token && !UP.busy && !document.getElementById('main').hidden) loadAll();
+  if (!document.hidden && !UP.busy) loadAll();
 }, CONFIG.AUTO_REFRESH_MIN * 60e3);
 
 /* =====================================================================
@@ -1091,19 +1002,16 @@ const ATT_MIME = ['image/jpeg', 'image/png', 'image/webp', 'application/pdf', 't
   'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'];
 const $ = id => document.getElementById(id);
 const dlg = $('logDlg');
-const lim = k => ME ? ({ maxAtt: ME.maxAtt || 3, maxPic: ME.maxPic || 6, mb: ME.maxFileMb || 10, back: ME.maxBackdateDays || 45, ev: ME.requireEvidence !== false })[k] : null;
+const lim = k => { const L = LIM || {}; return ({ maxAtt: L.maxAtt || 3, maxPic: L.maxPic || 6, mb: L.maxFileMb || 10, back: L.maxBackdateDays || 45, ev: L.requireEvidence !== false })[k]; };
 const isoLocal = d => d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
 const fmtSize = b => b >= 1048576 ? (b / 1048576).toFixed(1) + ' MB' : Math.max(1, Math.round(b / 1024)) + ' KB';
 function note(msg, isErr) { const n = $('logNote'); n.textContent = msg || ''; n.className = 'note' + (isErr ? ' err' : ''); }
 
-/* Branches this person may log for (all for admins) */
+/* Every branch from the Mapping sheet */
 function myBranches() {
-  if (!ME) return [];
   const seen = new Set(), list = [];
   mapRows().forEach(r => { if (r.branch && !seen.has(r.branch)) { seen.add(r.branch); list.push(r); } });
-  if (ME.role === 'admin' || (ME.branches || []).includes('*')) return list;
-  const mine = new Set((ME.branches || []).map(keyB));
-  return list.filter(r => mine.has(keyB(r.branch)));
+  return list;
 }
 function fillBranches() {
   const sel = $('fBr'), cur = sel.value || fBranch.val, list = myBranches(), g = {};
@@ -1134,11 +1042,11 @@ function typeHint() {
 }
 
 function openLog() {
-  if (!ME || !ME.canUpload) return;
+  if (!ACT && !MAP) { toast('Data is still loading.'); return; }
   fillBranches(); fillTypes();
   const d = $('fDate'), today = new Date();
   d.max = isoLocal(today);
-  d.min = ME.role === 'admin' ? '' : isoLocal(new Date(today.getTime() - lim('back') * 864e5));
+  d.min = isoLocal(new Date(today.getTime() - lim('back') * 864e5));
   if (!d.value) d.value = isoLocal(today);
   $('attLab').textContent = 'Attendance sheet: photo, PDF or Excel (up to ' + lim('maxAtt') + ')';
   $('picLab').textContent = 'Session photos (up to ' + lim('maxPic') + ')';
@@ -1249,14 +1157,12 @@ function readForm() {
 function checkForm(f) {
   const bad = (id, msg) => { $(id).classList.add('bad'); $(id).focus(); return msg; };
   const n = s => /^\d+$/.test(s) ? +s : NaN;
-  if (!CONFIG.AUTH_ENABLED) {
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(f.submitter)) return bad('fWho', 'Enter your work email.');
-    const dom = CONFIG.DOMAIN && CONFIG.DOMAIN !== 'yourcompany.com' ? CONFIG.DOMAIN.toLowerCase() : '';
-    if (dom && f.submitter.split('@')[1] !== dom) return bad('fWho', 'Use your @' + dom + ' email.');
-  }
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(f.submitter)) return bad('fWho', 'Enter your work email.');
+  const dom = (CONFIG.DOMAIN || '').toLowerCase();
+  if (dom && f.submitter.split('@')[1] !== dom) return bad('fWho', 'Use your @' + dom + ' email.');
   if (!f.date) return bad('fDate', 'Choose the session date.');
   if (f.date > $('fDate').max) return bad('fDate', 'The session date cannot be in the future.');
-  if ($('fDate').min && f.date < $('fDate').min) return bad('fDate', 'Sessions older than ' + lim('back') + ' days must be logged by an admin.');
+  if ($('fDate').min && f.date < $('fDate').min) return bad('fDate', 'Sessions older than ' + lim('back') + ' days cannot be logged here.');
   if (!f.branch) return bad('fBr', 'Choose the branch.');
   if (!f.type) return bad('fType', 'Choose the session type.');
   const inv = n(f.invited), tot = n(f.total), int = n(f.intended);
@@ -1290,10 +1196,6 @@ async function saveSession() {
   if (UP.busy) return;
   const f = readForm(), err = checkForm(f);
   if (err) { note(err, true); return; }
-  if (CONFIG.AUTH_ENABLED && AUTH.exp - Date.now() < 5 * 60e3) {
-    clearToken(); showGate('Your sign-in is about to expire. Sign in again; your entries are kept.', true, true);
-    return;
-  }
   setBusy(true);
   let sid = '';
   try {
@@ -1324,14 +1226,15 @@ async function saveSession() {
   } catch (e) {
     if (sid) api('cancel', { sessionId: sid }).catch(() => {});
     [...UP.att, ...UP.pic].forEach(it => { it.status = ''; });
-    if (!e.auth) note(e.message, true);
+    note(e.message, true);
   } finally {
     setBusy(false);
   }
 }
 $('logSave').onclick = saveSession;
 
-initAuth();
+try { $('fWho').value = localStorage.getItem('ma_who') || ''; } catch (e) {}
+loadAll();
 </script>
 </body>
 </html>
