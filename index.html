@@ -277,7 +277,7 @@
       </div>
     </div>
   </section>
-  <div class="ver">Version 5 · company sign-in</div>
+  <div class="ver">Version 5.1 · company sign-in</div>
 </div>
 
 <!-- ================= Log a session ================= -->
@@ -328,9 +328,14 @@
 /* =====================================================================
    CONFIG — fill these in
    ===================================================================== */
+function pickUrl(k, fallback) {
+  const v = String((window.APP_CONFIG || {})[k] || '').trim();
+  return /^https:\/\/script\.google\.com\//.test(v) ? v : fallback;
+}
 const CONFIG = {
-  API_URL: (window.APP_CONFIG || {}).DATA_URL || '',     // DATA deployment, from config.js
-  LOGIN_URL: (window.APP_CONFIG || {}).LOGIN_URL || '',   // LOGIN deployment, from config.js
+  /* Links come from config.js; the built-in ones below are used if config.js is missing or not filled in */
+  API_URL: pickUrl('DATA_URL', 'https://script.google.com/a/macros/wealthy.in/s/AKfycbxkqO4yWH0SVzoDm8QuQmHL5ULi6-9Zr2KicXOSORwDk10stq7ulTJv_mj4DG5bKZ9i/exec'),
+  LOGIN_URL: pickUrl('LOGIN_URL', 'https://script.google.com/a/macros/wealthy.in/s/AKfycby_OJyYvH7Fno3kf4kgmrsKuUaBLbtdKVWibwMe3uGc6fH5fWhvOooGqYqzG8ApVYuA/exec'),
   DOMAIN: 'wealthy.in',                                                     // submitter email must be on this domain
   PIC_MAX_PX: 1600, PIC_QUALITY: 0.72,     // session photos → ~200–400 KB
   ATT_MAX_PX: 2200, ATT_QUALITY: 0.82,     // attendance sheet photos stay readable
