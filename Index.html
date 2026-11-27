@@ -184,6 +184,7 @@
   .dl-foot .note { flex:1; font-size:12.5px; color:var(--muted); }
   .dl-foot .note.err { color:var(--down); }
 
+  .ver { margin-top:18px; font-size:11px; color:var(--muted); text-align:right; }
   .toast { position:fixed; left:50%; bottom:24px; transform:translateX(-50%); background:var(--ink); color:#fff; padding:10px 16px; border-radius:8px; font-size:13px; z-index:100; box-shadow:0 8px 24px rgba(20,38,43,.25); }
 
   @media (max-width:900px) {
@@ -254,6 +255,7 @@
       </div>
     </div>
   </section>
+  <div class="ver">Version 4 · no sign-in</div>
 </div>
 
 <!-- ================= Log a session ================= -->
@@ -278,11 +280,7 @@
         <label for="fType">Session type</label><select id="fType"></select>
         <span class="hintsm" id="fTypeHint"></span>
       </div>
-      <div class="nums">
-        <div class="fld"><label for="fInv">To be invited</label><input type="number" id="fInv" min="1" step="1" inputmode="numeric"></div>
-        <div class="fld"><label for="fTot">Total attended</label><input type="number" id="fTot" min="1" step="1" inputmode="numeric"></div>
-        <div class="fld"><label for="fInt">Intended partners attended</label><input type="number" id="fInt" min="0" step="1" inputmode="numeric"></div>
-      </div>
+      <div class="fld"><label for="fTot">Attendees</label><input type="number" id="fTot" min="1" step="1" inputmode="numeric" placeholder="Number attended"></div>
       <div class="fld full"><label for="fAgenda">Agenda</label><textarea id="fAgenda" maxlength="1000" placeholder="What was covered"></textarea></div>
       <div class="fld full">
         <span class="lab" id="attLab">Attendance sheet: photo, PDF or Excel</span>
@@ -310,7 +308,7 @@
    CONFIG — fill these in
    ===================================================================== */
 const CONFIG = {
-  API_URL: 'https://script.google.com/a/macros/wealthy.in/s/AKfycbw3j0cHjIMF9eLNv8jrB4TIQfjC-tK0MZJqcQRUqq50aGnjHK-iQGa0EO7f6Lu8yvff/exec',   // Apps Script web app /exec URL
+  API_URL: 'https://script.google.com/a/macros/wealthy.in/s/AKfycbxkqO4yWH0SVzoDm8QuQmHL5ULi6-9Zr2KicXOSORwDk10stq7ulTJv_mj4DG5bKZ9i/exec',   // Apps Script web app /exec URL
   DOMAIN: 'wealthy.in',                                                     // submitter email must be on this domain
   PIC_MAX_PX: 1600, PIC_QUALITY: 0.72,     // session photos → ~200–400 KB
   ATT_MAX_PX: 2200, ATT_QUALITY: 0.82,     // attendance sheet photos stay readable
@@ -415,6 +413,17 @@ function render() { renderActivities(); }
    ===================================================================== */
 let LIM = null;   // upload limits sent by the server
 async function api(action, body) {
+  /* Page opened from the Apps Script link: call the script directly */
+  if (window.google && google.script && google.script.run) {
+    return new Promise((res, rej) => {
+      google.script.run
+        .withSuccessHandler(s => { let j; try { j = JSON.parse(s); } catch (e) { return rej(new Error('The server sent an unexpected reply.')); }
+                                   j.ok ? res(j.data) : rej(new Error(j.error || 'The request failed.')); })
+        .withFailureHandler(e => rej(new Error((e && e.message) || String(e))))
+        .api(JSON.stringify(Object.assign({ action: action }, body || {})));
+    });
+  }
+  /* Page hosted elsewhere (EdgeOne / GitHub): call the /exec URL */
   if (/PASTE_DEPLOYMENT_ID/.test(CONFIG.API_URL)) throw new Error('Set CONFIG.API_URL in index.html to your Apps Script /exec URL.');
   let res;
   try {
@@ -1065,7 +1074,7 @@ document.querySelectorAll('#logKind button').forEach(b => b.onclick = () => {
   fillTypes();
 });
 ['fDate', 'fBr', 'fType'].forEach(id => $(id).addEventListener('change', typeHint));
-['fWho', 'fDate', 'fBr', 'fType', 'fInv', 'fTot', 'fInt', 'fAgenda'].forEach(id => $(id).addEventListener('input', () => $(id).classList.remove('bad')));
+['fWho', 'fDate', 'fBr', 'fType', 'fTot', 'fAgenda'].forEach(id => $(id).addEventListener('input', () => $(id).classList.remove('bad')));
 
 /* ---------- Files ---------- */
 function compressImage(file, maxPx, q) {
@@ -1152,7 +1161,7 @@ const toB64 = blob => new Promise((res, rej) => {
 function readForm() {
   const v = id => $(id).value.trim();
   return { kind: UP.kind, submitter: v('fWho').toLowerCase(), date: v('fDate'), branch: v('fBr'), type: v('fType'),
-           invited: v('fInv'), total: v('fTot'), intended: v('fInt'), agenda: v('fAgenda') };
+           total: v('fTot'), agenda: v('fAgenda') };
 }
 function checkForm(f) {
   const bad = (id, msg) => { $(id).classList.add('bad'); $(id).focus(); return msg; };
@@ -1165,12 +1174,7 @@ function checkForm(f) {
   if ($('fDate').min && f.date < $('fDate').min) return bad('fDate', 'Sessions older than ' + lim('back') + ' days cannot be logged here.');
   if (!f.branch) return bad('fBr', 'Choose the branch.');
   if (!f.type) return bad('fType', 'Choose the session type.');
-  const inv = n(f.invited), tot = n(f.total), int = n(f.intended);
-  if (!(inv >= 1)) return bad('fInv', 'Enter how many were invited (at least 1).');
-  if (!(tot >= 1)) return bad('fTot', 'Enter how many attended (at least 1).');
-  if (!(int >= 0)) return bad('fInt', 'Enter how many intended partners attended (0 or more).');
-  if (int > tot) return bad('fInt', 'Intended partners attended cannot be more than total attended.');
-  if (int > inv) return bad('fInt', 'Intended partners attended cannot be more than the number invited.');
+  if (!(n(f.total) >= 1)) return bad('fTot', 'Enter how many attended (at least 1).');
   if (f.agenda.length < 5) return bad('fAgenda', 'Add a short agenda.');
   if ([...UP.att, ...UP.pic].some(x => !x.blob)) return 'Wait for the files to finish processing.';
   if (lim('ev') && !UP.att.length) return 'Add the attendance sheet.';
@@ -1180,13 +1184,13 @@ function checkForm(f) {
 function setBusy(b) {
   UP.busy = b;
   ['logSave', 'logCancel', 'logX'].forEach(id => { $(id).disabled = b; });
-  ['fWho', 'fDate', 'fBr', 'fType', 'fInv', 'fTot', 'fInt', 'fAgenda'].forEach(id => { $(id).disabled = b; });
+  ['fWho', 'fDate', 'fBr', 'fType', 'fTot', 'fAgenda'].forEach(id => { $(id).disabled = b; });
   ['attDrop', 'picDrop'].forEach(id => $(id).setAttribute('aria-disabled', b));
   $('logSave').textContent = b ? 'Saving…' : 'Save session';
   drawFiles('att'); drawFiles('pic');
 }
 function resetLog() {
-  ['fInv', 'fTot', 'fInt', 'fAgenda'].forEach(id => { $(id).value = ''; });
+  ['fTot', 'fAgenda'].forEach(id => { $(id).value = ''; });
   $('fDate').value = isoLocal(new Date()); $('fType').value = '';
   [...UP.att, ...UP.pic].forEach(it => { if (it.thumb) URL.revokeObjectURL(it.thumb); });
   UP.att = []; UP.pic = []; drawFiles('att'); drawFiles('pic'); note('');
